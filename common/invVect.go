@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/binary"
 	"errors"
+	"strconv"
 )
 
 type ObjectType uint32
@@ -13,6 +14,21 @@ const (
 	MsgFilteredBlock
 	MsgCmpctBlock
 )
+
+func ObjectType2String(ot ObjectType) string {
+	switch ot {
+	case MsgErr: return "err"
+	case MsgTx: return "tx"
+	case MsgBlock: return "block"
+	case MsgFilteredBlock: return "filtered block"
+	case MsgCmpctBlock:
+		return "compct block"
+	default:
+		return "unknow type:"+strconv.Itoa(int(ot))
+	}
+
+	//return ""
+}
 
 type InvVector struct {
 	Type ObjectType

@@ -14,6 +14,9 @@ type Node struct {
 }
 
 func (node *Node) Start() {
+	//todo:先找到本地的区块数据和交易数据，然后回放到内存中去
+
+
 	//主动连接P2P节点
 	for addr, peer := range node.Peers {
 		conn, err := net.Dial("tcp", addr)
@@ -59,6 +62,7 @@ func NewNode(addresses []string) *Node {
 		"ping":   (*Node).HandlePing,
 		"pong":   (*Node).HandlePong,
 		"getblocks": (*Node).HandleGetblocks,
+		"inv":(*Node).HandleInv,
 	}
 	var mapPeers = make(map[string]Peer)
 	for _, addr := range addresses {
