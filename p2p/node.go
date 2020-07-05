@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"btcnetwork/common"
+	"io"
 	"log"
 	"net"
 )
@@ -32,6 +33,8 @@ func (node *Node) Start() {
 		node.Peers[addr] = peer
 
 		go node.handleMsg(conn)
+
+		go node.CheckPeerAlive()
 	}
 
 	//todo:启动监听服务准备接受其他节点的连接
@@ -55,6 +58,7 @@ func NewNode(addresses []string) *Node {
 		"verack": (*Node).HandleVerack,
 		"ping":   (*Node).HandlePing,
 		"pong":   (*Node).HandlePong,
+		"getblocks": (*Node).HandleGetblocks,
 	}
 	var mapPeers = make(map[string]Peer)
 	for _, addr := range addresses {
@@ -124,7 +128,12 @@ func (node *Node) handleMsg(conn net.Conn) {
 	for {
 		header, err := readMsgHeader(conn)
 		if err != nil {
-			log.Println(err.Error())
+			if err == io.EOF {
+				log.Printf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+			} else {
+				log.Println(err.Error())
+			}
+
 			break
 		}
 
@@ -132,7 +141,12 @@ func (node *Node) handleMsg(conn net.Conn) {
 
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
-			log.Println(err)
+			if err == io.EOF {
+				log.Printf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+			} else {
+				log.Println(err)
+			}
+
 			break
 		}
 		cmd := common.Byte2String(header.Command[:])

@@ -22,7 +22,7 @@ func NewPeer() Peer {
 // todo:需要考虑共享资源竞争问题
 func (node *Node)CheckPeerAlive() error {
 	for {
-		time.Sleep(90*time.Second)//todo: 从配置文件里读出来
+		time.Sleep(30*time.Second)//todo: 从配置文件里读出来
 
 		for _, peer := range node.Peers {
 			if len(peer.Alive) == 1 { //说明这段时间内接收到该节点的pong消息

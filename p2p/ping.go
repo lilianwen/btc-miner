@@ -60,7 +60,9 @@ func (node *Node) HandlePing(peer *Peer, payload []byte) error {
 
 func (node *Node) HandlePong(peer *Peer, payload []byte) error {
 	//实现心跳机制
-	peer.Alive <- true
+	if len(peer.Alive) == 0 { //可能远程节点发送ping更频繁一些，这里做这个判断防止通道满了再往里写会阻塞
+		peer.Alive <- true
+	}
 
 	return nil
 }
