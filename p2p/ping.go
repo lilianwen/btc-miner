@@ -3,10 +3,30 @@ package p2p
 import (
 	"encoding/binary"
 	"errors"
+	"math/rand"
+)
+
+const (
+	PingPongPayloadLen = 8
 )
 
 type PingPayload struct {
 	Nonce uint64
+}
+
+func NewPingMsg() *Msg {
+	nonce := uint64(rand.Int63())
+	var buf [PingPongPayloadLen]byte
+	binary.LittleEndian.PutUint64(buf[:], nonce)
+	msg,_ :=NewMsg("ping", buf[:])//因为是自己组装的消息，所以一定不会出错
+	return msg
+}
+
+func NewPongMsg(nonce uint64) *Msg {
+	var buf [PingPongPayloadLen]byte
+	binary.LittleEndian.PutUint64(buf[:], nonce)
+	msg,_ :=NewMsg("pong", buf[:])//因为是自己组装的消息，所以一定不会出错
+	return msg
 }
 
 func (p *PingPayload) Serialize() []byte {
@@ -40,6 +60,7 @@ func (node *Node) HandlePing(peer *Peer, payload []byte) error {
 
 func (node *Node) HandlePong(peer *Peer, payload []byte) error {
 	//实现心跳机制
+	peer.Alive <- true
 
 	return nil
 }

@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"btcnetwork/common"
-	"io"
 	"log"
 	"net"
 )
@@ -25,7 +24,7 @@ func (node *Node) Start() {
 		//既然前面能够拨号成功，那么ip和端口肯定是合法的，就不用检查错误了
 		msg, _ := NewVerMsg(addr)
 
-		if err = sendMsg(conn, msg.Serialize()); err != nil {
+		if err = node.sendMsg(conn, msg.Serialize()); err != nil {
 			log.Println(err.Error())
 			continue
 		}
@@ -45,6 +44,7 @@ func (node *Node) Start() {
 		if err != nil {
 			log.Panicln(err)
 		}
+		node.AddPeer(conn, conn.RemoteAddr().String())
 		go node.handleMsg(conn)
 	}
 }
@@ -58,17 +58,20 @@ func NewNode(addresses []string) *Node {
 	}
 	var mapPeers = make(map[string]Peer)
 	for _, addr := range addresses {
-		mapPeers[addr] = Peer{}
+		mapPeers[addr] = NewPeer()
 	}
 	return &Node{Peers: mapPeers, Handlers: handlers}
 }
 
 // 新增节点，主要给监听服务和addr消息用
-func (node *Node) AddPeer(addr string) {
-	node.Peers[addr] = Peer{}
+func (node *Node) AddPeer(conn net.Conn, addr string) {
+	p := NewPeer()
+	p.Conn = conn
+	p.Addr = addr
+	node.Peers[addr] = p
 }
 
-func sendMsg(conn net.Conn, data []byte) error {
+func (node *Node)sendMsg(conn net.Conn, data []byte) error {
 	var sum = 0
 	var start = 0
 	for sum < len(data) { //防止少发送数据
@@ -118,17 +121,11 @@ func readPayload(conn net.Conn, payloadLen uint32) ([]byte, error) {
 }
 
 func (node *Node) handleMsg(conn net.Conn) {
-	defer conn.Close()
 	for {
 		header, err := readMsgHeader(conn)
 		if err != nil {
 			log.Println(err.Error())
-			if err == io.EOF {
-				//说明远程节点关闭了连接,退出goroutine
-				break
-			}
-			//todo:出错了怎么办？
-			panic(err)
+			break
 		}
 
 		log.Printf("received from %s message:%s\n", conn.RemoteAddr().String(), string(header.Command[:]))
@@ -136,7 +133,7 @@ func (node *Node) handleMsg(conn net.Conn) {
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
 			log.Println(err)
-			panic(err)
+			break
 		}
 		cmd := common.Byte2String(header.Command[:])
 		handler, ok := node.Handlers[cmd]
@@ -147,7 +144,12 @@ func (node *Node) handleMsg(conn net.Conn) {
 		peer := node.Peers[conn.RemoteAddr().String()]
 		if err = handler(node, &peer, payload); err != nil {
 			log.Printf("handle message(%s) error:%s\n", cmd, err.Error())
-			continue
+			break
 		}
 	}
+
+	//释放资源
+	conn.Close()
+	//删除节点
+	delete(node.Peers, conn.RemoteAddr().String())
 }
