@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 //需要种子节点列表
@@ -15,6 +16,8 @@ type Node struct {
 	Peers      map[string]Peer                             //按照地址映射远程节点的信息
 	PeerAmount uint32
 	mu         sync.RWMutex
+	PingTicker *time.Ticker
+	StopPing   chan bool
 }
 
 func (node *Node) Start() {
@@ -42,8 +45,10 @@ func (node *Node) Start() {
 		wg.Add(1)
 		go node.handleMsg(conn, &wg)
 
+		node.PingTicker = time.NewTicker(90 * time.Second) //todo: 从配置文件读取该数据
+		node.StopPing = make(chan bool)
 		wg.Add(1)
-		go node.CheckPeerAlive(&wg)
+		go node.PingPeers(&wg)
 	}
 
 	//todo:启动监听服务准备接受其他节点的连接

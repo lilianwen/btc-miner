@@ -20,27 +20,40 @@ func NewPeer() Peer {
 	return p
 }
 
-// todo:需要考虑共享资源竞争问题
-func (node *Node) CheckPeerAlive(wg *sync.WaitGroup) error {
+func (node *Node) PingPeers(wg *sync.WaitGroup) error {
+deadloop:
 	for {
-		time.Sleep(90 * time.Second) //todo: 从配置文件里读出来
+		select {
+		case <-node.PingTicker.C:
+			for _, peer := range node.Peers {
+				if len(peer.Alive) == 1 { //说明这段时间内接收到该节点的pong消息
+					continue
+				}
 
-		for _, peer := range node.Peers {
-			if len(peer.Alive) == 1 { //说明这段时间内接收到该节点的pong消息
-				continue
+				//给该节点发送ping消息
+				msg := NewPingMsg()
+
+				if err := node.sendMsg(peer.Conn, msg.Serialize()); err != nil {
+					log.Println(err)
+					continue
+				}
 			}
+			timerCheckAlive := time.NewTimer(5 * time.Second) //todo: 从配置文件里读出来
+			go node.CheckPeerAlive(timerCheckAlive)
 
-			//给该节点发送ping消息
-			msg := NewPingMsg()
-
-			if err := node.sendMsg(peer.Conn, msg.Serialize()); err != nil {
-				log.Println(err)
-				continue
-			}
+		case <-node.StopPing:
+			break deadloop
 		}
+	}
 
-		time.Sleep(5 * time.Second) //todo: 从配置文件里读出来
-		//发送完ping消息后等一段时间再遍历一次
+	wg.Done()
+	return nil
+}
+
+func (node *Node) CheckPeerAlive(t *time.Timer) {
+	//发送完ping消息后等一段时间再遍历一次
+	select {
+	case <-t.C:
 		node.mu.Lock()
 		for _, peer := range node.Peers {
 			if len(peer.Alive) == 1 { //说明这段时间内接收到该节点的pong消息
@@ -53,7 +66,4 @@ func (node *Node) CheckPeerAlive(wg *sync.WaitGroup) error {
 		}
 		node.mu.Unlock()
 	}
-
-	wg.Done()
-	return nil
 }
