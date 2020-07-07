@@ -40,7 +40,7 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// serverCmd.PersistentFlags().String("foo", "", "A help for foo")
+	serverCmd.PersistentFlags().BoolP("mine", "m", false, "mine blocks")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
@@ -50,7 +50,7 @@ func init() {
 func startServer(cmd *cobra.Command, args []string) {
 	_ = cmd
 	_ = args
-//	service := p2p.NewNode([]string{"198.211.109.72:8333"})
+	//	service := p2p.NewNode([]string{"198.211.109.72:8333"})
 	service := p2p.NewNode([]string{"127.0.0.1:9333"})
 	service.Start()
 }

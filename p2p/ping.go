@@ -18,14 +18,14 @@ func NewPingMsg() *Msg {
 	nonce := uint64(rand.Int63())
 	var buf [PingPongPayloadLen]byte
 	binary.LittleEndian.PutUint64(buf[:], nonce)
-	msg,_ :=NewMsg("ping", buf[:])//因为是自己组装的消息，所以一定不会出错
+	msg, _ := NewMsg("ping", buf[:]) //因为是自己组装的消息，所以一定不会出错
 	return msg
 }
 
 func NewPongMsg(nonce uint64) *Msg {
 	var buf [PingPongPayloadLen]byte
 	binary.LittleEndian.PutUint64(buf[:], nonce)
-	msg,_ :=NewMsg("pong", buf[:])//因为是自己组装的消息，所以一定不会出错
+	msg, _ := NewMsg("pong", buf[:]) //因为是自己组装的消息，所以一定不会出错
 	return msg
 }
 
@@ -61,7 +61,9 @@ func (node *Node) HandlePing(peer *Peer, payload []byte) error {
 func (node *Node) HandlePong(peer *Peer, payload []byte) error {
 	//实现心跳机制
 	if len(peer.Alive) == 0 { //可能远程节点发送ping更频繁一些，这里做这个判断防止通道满了再往里写会阻塞
+		node.mu.Lock()
 		peer.Alive <- true
+		node.mu.Unlock()
 	}
 
 	return nil
