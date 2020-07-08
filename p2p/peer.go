@@ -20,7 +20,7 @@ func NewPeer() Peer {
 	return p
 }
 
-func (node *Node) PingPeers(wg *sync.WaitGroup) error {
+func (node *Node) PingPeers(wg *sync.WaitGroup) {
 deadloop:
 	for {
 		select {
@@ -38,7 +38,7 @@ deadloop:
 					continue
 				}
 			}
-			timerCheckAlive := time.NewTimer(5 * time.Second) //todo: 从配置文件里读出来
+			timerCheckAlive := time.NewTimer(time.Duration(node.Cfg.CheckPongTimeval) * time.Second)
 			go node.CheckPeerAlive(timerCheckAlive)
 
 		case <-node.StopPing:
@@ -47,7 +47,6 @@ deadloop:
 	}
 
 	wg.Done()
-	return nil
 }
 
 func (node *Node) CheckPeerAlive(t *time.Timer) {

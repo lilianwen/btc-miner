@@ -16,8 +16,11 @@ limitations under the License.
 package cmd
 
 import (
+	"btcnetwork/common"
 	"btcnetwork/p2p"
 	"fmt"
+	"github.com/spf13/viper"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -48,9 +51,31 @@ func init() {
 }
 
 func startServer(cmd *cobra.Command, args []string) {
-	_ = cmd
-	_ = args
-	//	service := p2p.NewNode([]string{"198.211.109.72:8333"})
-	service := p2p.NewNode([]string{"127.0.0.1:9333"})
+	service := p2p.NewNode(loadConfig(cmd, args))
 	service.Start()
+}
+
+func loadConfig(cmd *cobra.Command, args []string) *common.Config {
+	configFile, err := cmd.Flags().GetString("config")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(configFile)
+
+	s := strings.Split(configFile, ".")
+	if len(s) <= 1 {
+		panic("config file without extension")
+	}
+	cfgType := s[len(s)-1]
+	viper.SetConfigFile(configFile)
+	viper.SetConfigType(cfgType)
+	if err = viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
+	var c = common.Config{}
+	if err = viper.Unmarshal(&c); err != nil {
+		panic(err)
+	}
+	fmt.Printf("%v\n", c)
+	return &c
 }

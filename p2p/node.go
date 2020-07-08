@@ -12,6 +12,7 @@ import (
 
 //需要种子节点列表
 type Node struct {
+	Cfg        common.Config                               //从配置文件读出来以后就不会再被改变了
 	Handlers   map[string]func(*Node, *Peer, []byte) error //存储各个消息的处理函数
 	Peers      map[string]Peer                             //按照地址映射远程节点的信息
 	PeerAmount uint32
@@ -45,13 +46,13 @@ func (node *Node) Start() {
 		wg.Add(1)
 		go node.handleMsg(conn, &wg)
 
-		node.PingTicker = time.NewTicker(90 * time.Second) //todo: 从配置文件读取该数据
+		//time.Duration()
+		node.PingTicker = time.NewTicker(time.Duration(node.Cfg.PingPeriod) * time.Second)
 		node.StopPing = make(chan bool)
 		wg.Add(1)
 		go node.PingPeers(&wg)
 	}
 
-	//todo:启动监听服务准备接受其他节点的连接
 	go node.listenPeers(&wg)
 
 	wg.Wait()
@@ -60,7 +61,7 @@ func (node *Node) Start() {
 func (node *Node) listenPeers(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	listener, err := net.Listen("tcp", "0.0.0.0:8333") //todo: 改成配置数据
+	listener, err := net.Listen("tcp", node.Cfg.PeerListen)
 	if err != nil {
 		log.Panicln(err)
 	}
@@ -70,7 +71,7 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 			log.Panicln(err)
 		}
 		//节点数量有个上限，不能一直在这里接收
-		if atomic.LoadUint32(&node.PeerAmount) >= 8 { //todo:从配置文件里读取这个数值
+		if atomic.LoadUint32(&node.PeerAmount) >= uint32(node.Cfg.MaxPeer) {
 			conn.Close()
 			continue
 		}
@@ -84,7 +85,7 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 	}
 }
 
-func NewNode(addresses []string) *Node {
+func NewNode(cfg *common.Config) *Node {
 	var handlers = map[string]func(*Node, *Peer, []byte) error{
 		"version":   (*Node).HandleVersion,
 		"verack":    (*Node).HandleVerack,
@@ -94,10 +95,10 @@ func NewNode(addresses []string) *Node {
 		"inv":       (*Node).HandleInv,
 	}
 	var mapPeers = make(map[string]Peer)
-	for _, addr := range addresses {
+	for _, addr := range cfg.RemotePeers {
 		mapPeers[addr] = NewPeer()
 	}
-	return &Node{Peers: mapPeers, Handlers: handlers}
+	return &Node{Cfg: *cfg, Peers: mapPeers, Handlers: handlers}
 }
 
 // 新增节点，主要给监听服务和addr消息用

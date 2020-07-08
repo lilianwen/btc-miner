@@ -45,24 +45,3 @@ func (msg *Msg) Parse(data []byte) {
 	msg.Header.Parse(data)
 	msg.Payload = append(msg.Payload, data[24:]...)
 }
-
-/*
-func HandleCommand(tconn *net.TCPConn, msg *Msg) error {
-	switch string(msg.Command[:]) {
-	case "version": return HandleVersion(tconn, msg)
-	case "verack": return nil
-	case "ping": return HandlePing(tconn, msg)
-	case "pong": return nil
-	case "getaddr": return HandleGetaddr(tconn, msg)
-	case "addr": return HandleAddr(tconn, msg)
-	default : return HandleUnknown(tconn, msg)
-	}
-	return nil
-}
-
-func HandleUnknown(tconn *net.TCPConn, msg *Msg) error {
-	log.Error(string(msg.Command[:]))
-	_ = tconn
-	return errors.New("unknow messge")
-}
-*/

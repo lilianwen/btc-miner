@@ -22,13 +22,6 @@ func NewPingMsg() *Msg {
 	return msg
 }
 
-func NewPongMsg(nonce uint64) *Msg {
-	var buf [PingPongPayloadLen]byte
-	binary.LittleEndian.PutUint64(buf[:], nonce)
-	msg, _ := NewMsg("pong", buf[:]) //因为是自己组装的消息，所以一定不会出错
-	return msg
-}
-
 func (p *PingPayload) Serialize() []byte {
 	var data [8]byte
 	binary.LittleEndian.PutUint64(data[:], p.Nonce)
