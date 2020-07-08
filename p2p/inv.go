@@ -3,7 +3,6 @@ package p2p
 import (
 	"btcnetwork/common"
 	"encoding/hex"
-	"log"
 )
 
 type InvPayload struct {
@@ -11,9 +10,9 @@ type InvPayload struct {
 	Inventory []common.InvVector
 }
 
-func NewInvPayload(count uint64, invv []common.InvVector) *InvPayload {
-	return &InvPayload{Count: common.NewVarInt(count), Inventory: invv}
-}
+//func NewInvPayload(count uint64, invv []common.InvVector) *InvPayload {
+////	return &InvPayload{Count: common.NewVarInt(count), Inventory: invv}
+////}
 
 func (invp *InvPayload) Serialize() []byte {
 	var buf []byte
@@ -25,7 +24,10 @@ func (invp *InvPayload) Serialize() []byte {
 }
 
 func (invp *InvPayload) Parse(data []byte) error {
-	invp.Count.Parse(hex.EncodeToString(data[:]))
+	err := invp.Count.Parse(hex.EncodeToString(data[:]))
+	if err != nil {
+		return err
+	}
 	log.Println("inv count:", invp.Count.Value)
 
 	invp.Inventory = make([]common.InvVector, invp.Count.Value) //预先分配，提高性能
@@ -109,5 +111,6 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 
 //todo:查看本地是否有这个区块哈希对应的区块，有就返回true.暂时不知道放哪，先放这里好了。
 func HasBlock(blockHash [32]byte) bool {
+	_ = blockHash
 	return false
 }

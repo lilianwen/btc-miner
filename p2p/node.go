@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"btcnetwork/common"
+	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -29,7 +29,7 @@ func (node *Node) Start() {
 	for addr, peer := range node.Peers {
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
-			log.Println(err.Error())
+			log.Errorln(err.Error())
 			continue
 		}
 		//开始握手协议
@@ -37,7 +37,7 @@ func (node *Node) Start() {
 		msg, _ := NewVerMsg(addr)
 
 		if err = node.sendMsg(conn, msg.Serialize()); err != nil {
-			log.Println(err.Error())
+			log.Errorln(err.Error())
 			continue
 		}
 		peer.Conn = conn
@@ -63,12 +63,14 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 
 	listener, err := net.Listen("tcp", node.Cfg.PeerListen)
 	if err != nil {
-		log.Panicln(err)
+		log.Errorln(err)
+		return
 	}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Panicln(err)
+			log.Errorln(err)
+			continue
 		}
 		//节点数量有个上限，不能一直在这里接收
 		if atomic.LoadUint32(&node.PeerAmount) >= uint32(node.Cfg.MaxPeer) {
@@ -163,9 +165,9 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		header, err := readMsgHeader(conn)
 		if err != nil {
 			if err == io.EOF {
-				log.Printf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+				log.Errorf("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Println(err.Error())
+				log.Errorln(err.Error())
 			}
 
 			break
@@ -176,9 +178,9 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
 			if err == io.EOF {
-				log.Printf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+				log.Errorf("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Println(err)
+				log.Errorln(err)
 			}
 
 			break
@@ -186,12 +188,12 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		cmd := common.Byte2String(header.Command[:])
 		handler, ok := node.Handlers[cmd]
 		if !ok {
-			log.Printf("not support message(%s) handler\n", cmd)
+			log.Errorf("not support message(%s) handler\n", cmd)
 			continue
 		}
 		peer := node.Peers[conn.RemoteAddr().String()]
 		if err = handler(node, &peer, payload); err != nil {
-			log.Printf("handle message(%s) error:%s\n", cmd, err.Error())
+			log.Errorf("handle message(%s) error:%s\n", cmd, err.Error())
 			break
 		}
 	}
@@ -203,4 +205,11 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 	delete(node.Peers, conn.RemoteAddr().String())
 	node.mu.Unlock()
 	wg.Done()
+}
+
+var log *logrus.Logger
+
+func init() {
+	log = logrus.New()
+	//log.
 }

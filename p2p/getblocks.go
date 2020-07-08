@@ -5,17 +5,16 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/pkg/errors"
-	"log"
 )
 
 type GetblocksPayload struct {
-	Version uint32
+	Version   uint32
 	HashCount common.VarInt
 	HashStart [32]byte
-	HashStop [32]byte
+	HashStop  [32]byte
 }
 
-func (gp *GetblocksPayload)Serialize() []byte {
+func (gp *GetblocksPayload) Serialize() []byte {
 	var buf []byte
 	var uint32Buf [4]byte
 
@@ -29,7 +28,7 @@ func (gp *GetblocksPayload)Serialize() []byte {
 	return buf
 }
 
-func (gp *GetblocksPayload)Parse(data []byte) error {
+func (gp *GetblocksPayload) Parse(data []byte) error {
 	if len(data) < gp.Len() {
 		return errors.New("data is too short for getblocks payload")
 	}
@@ -44,11 +43,11 @@ func (gp *GetblocksPayload)Parse(data []byte) error {
 	return nil
 }
 
-func (gp *GetblocksPayload)Len() int {
-	return 68+gp.HashCount.Len()
+func (gp *GetblocksPayload) Len() int {
+	return 68 + gp.HashCount.Len()
 }
 
-func (node *Node)HandleGetblocks(peer *Peer, payload []byte) error {
+func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 	gp := GetblocksPayload{}
 	err := gp.Parse(payload)
 	if err != nil {
@@ -90,11 +89,11 @@ func (node *Node)HandleGetblocks(peer *Peer, payload []byte) error {
 }
 
 // todo: 获取本地最新的区块哈希
-func (node *Node)GetLatestBlockHash() string {
+func (node *Node) GetLatestBlockHash() string {
 	return "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
 }
 
 // todo:判断本地是否有该哈希值
-func (node *Node)HasBlockHash(hash string) bool {
+func (node *Node) HasBlockHash(hash string) bool {
 	return false
 }

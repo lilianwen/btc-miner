@@ -19,6 +19,7 @@ import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"strings"
 
@@ -36,7 +37,10 @@ var serverCmd = &cobra.Command{
 	},
 }
 
+var log *logrus.Logger
+
 func init() {
+	log = logrus.New()
 	rootCmd.AddCommand(serverCmd)
 
 	// Here you will define your flags and configuration settings.
@@ -56,26 +60,29 @@ func startServer(cmd *cobra.Command, args []string) {
 }
 
 func loadConfig(cmd *cobra.Command, args []string) *common.Config {
+	_ = args
 	configFile, err := cmd.Flags().GetString("config")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(configFile)
 
 	s := strings.Split(configFile, ".")
 	if len(s) <= 1 {
 		panic("config file without extension")
 	}
+
 	cfgType := s[len(s)-1]
 	viper.SetConfigFile(configFile)
 	viper.SetConfigType(cfgType)
+	log.Info("read data form config file:", configFile)
 	if err = viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
+
 	var c = common.Config{}
 	if err = viper.Unmarshal(&c); err != nil {
 		panic(err)
 	}
-	fmt.Printf("%v\n", c)
+
 	return &c
 }

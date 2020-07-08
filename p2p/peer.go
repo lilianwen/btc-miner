@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -34,7 +33,7 @@ deadloop:
 				msg := NewPingMsg()
 
 				if err := node.sendMsg(peer.Conn, msg.Serialize()); err != nil {
-					log.Println(err)
+					log.Errorln(err)
 					continue
 				}
 			}
@@ -60,7 +59,9 @@ func (node *Node) CheckPeerAlive(t *time.Timer) {
 			} else {
 				// 可以考虑移除这些被判定为异常的节点,有可能远端节点只是代码有bug，没有及时回pong消息
 				peer.Conn.Close()
-				delete(node.Peers, peer.Conn.RemoteAddr().String())
+				addr := peer.Conn.RemoteAddr().String()
+				delete(node.Peers, addr)
+				log.Infof("peer[%s] is outbound, close the connection.\n", addr)
 			}
 		}
 		node.mu.Unlock()
