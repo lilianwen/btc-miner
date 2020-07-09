@@ -73,18 +73,22 @@ func (txout *TxOutput) Len() int {
 }
 
 type TxWitness struct {
-	DataLen uint32
+	DataLen common.VarInt
 	Data    []byte
 }
 
 func (txw *TxWitness) Parse(data []byte) error {
-	txw.DataLen = binary.LittleEndian.Uint32(data[:4])
-	txw.Data = append(txw.Data, data[4:4+int(txw.DataLen)]...)
+	err := txw.DataLen.Parse(hex.EncodeToString(data))
+	if err != nil {
+		return err
+	}
+	start := txw.DataLen.Len()
+	txw.Data = append(txw.Data, data[start:start+int(txw.DataLen.Value)]...)
 	return nil
 }
 
 func (txw *TxWitness) Len() int {
-	return 4 + len(txw.Data)
+	return txw.DataLen.Len() + len(txw.Data)
 }
 
 type TxPayload struct {
@@ -127,8 +131,8 @@ func (txp *TxPayload) Parse(data []byte) error {
 		return err
 	}
 	start += txp.TxoutCount.Len()
-	var out = TxOutput{}
 	for i := 0; i < int(txp.TxoutCount.Value); i++ {
+		var out = TxOutput{}
 		if err = out.Parse(data[start:]); err != nil {
 			return err
 		}
