@@ -52,6 +52,9 @@ func (node *Node) Start() {
 		node.StopPing = make(chan bool)
 		wg.Add(1)
 		go node.PingPeers(&wg)
+
+		wg.Add(1)
+		go node.SyncMempool(&wg)
 	}
 
 	go node.listenPeers(&wg)
