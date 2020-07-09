@@ -41,6 +41,7 @@ func (node *Node) Start() {
 			continue
 		}
 		peer.Conn = conn
+		peer.Addr = addr
 		node.AddPeer(peer)
 
 		wg.Add(1)
@@ -173,7 +174,8 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			break
 		}
 
-		log.Printf("received from %s message:%s\n", conn.RemoteAddr().String(), string(header.Command[:]))
+		cmd := common.Byte2String(header.Command[:])
+		log.Printf("received from [%s] message:[%s]", conn.RemoteAddr().String(), cmd)
 
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
@@ -185,7 +187,7 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 
 			break
 		}
-		cmd := common.Byte2String(header.Command[:])
+
 		handler, ok := node.Handlers[cmd]
 		if !ok {
 			log.Errorf("not support message(%s) handler\n", cmd)

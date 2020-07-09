@@ -18,7 +18,6 @@ package cmd
 import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
-	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"strings"
@@ -32,7 +31,7 @@ var serverCmd = &cobra.Command{
 	Short: "service for btc network",
 	Long:  `service for btc network`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("start server.")
+		log.Infoln("start server.")
 		startServer(cmd, args)
 	},
 }
@@ -48,6 +47,7 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	serverCmd.PersistentFlags().BoolP("mine", "m", false, "mine blocks")
+	serverCmd.PersistentFlags().StringP("config", "c", "", "config file for node")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
