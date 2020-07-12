@@ -19,6 +19,7 @@ type Node struct {
 	mu         sync.RWMutex
 	PingTicker *time.Ticker
 	StopPing   chan bool
+	txPool     map[[32]byte][]byte
 }
 
 func (node *Node) Start() {
@@ -57,6 +58,10 @@ func (node *Node) Start() {
 		<-peer.HandShakeDone
 		wg.Add(1)
 		go node.SyncMempool(&wg)
+
+		//
+		wg.Add(1)
+		go node.StartApiService(&wg)
 	}
 
 	go node.listenPeers(&wg)
@@ -102,12 +107,14 @@ func NewNode(cfg *common.Config) *Node {
 		"getblocks": (*Node).HandleGetblocks,
 		"inv":       (*Node).HandleInv,
 		"block":     (*Node).HandleBlock,
+		"tx":        (*Node).HandleTx,
 	}
-	var mapPeers = make(map[string]Peer)
+	var peers = make(map[string]Peer)
+	var txpool = make(map[[32]byte][]byte)
 	for _, addr := range cfg.RemotePeers {
-		mapPeers[addr] = NewPeer()
+		peers[addr] = NewPeer()
 	}
-	return &Node{Cfg: *cfg, Peers: mapPeers, Handlers: handlers}
+	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool}
 }
 
 // 新增节点，主要给监听服务和addr消息用
@@ -196,12 +203,12 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 
 		handler, ok := node.Handlers[cmd]
 		if !ok {
-			log.Errorf("not support message(%s) handler\n", cmd)
+			log.Errorf("not support message(%s) handler", cmd)
 			continue
 		}
 		peer := node.Peers[conn.RemoteAddr().String()]
 		if err = handler(node, &peer, payload); err != nil {
-			log.Errorf("handle message(%s) error:%s\n", cmd, err.Error())
+			log.Errorf("handle message(%s) error:%s", cmd, err.Error())
 			break
 		}
 	}

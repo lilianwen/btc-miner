@@ -12,6 +12,16 @@ type PreOutput struct {
 	Index uint32
 }
 
+func (po *PreOutput) Serialize() []byte {
+	var i2b4 [4]byte
+	var ret []byte
+
+	ret = append(ret, po.Hash[:]...)
+	binary.LittleEndian.PutUint32(i2b4[:], po.Index)
+	ret = append(ret, i2b4[:]...)
+	return ret
+}
+
 func (po *PreOutput) Parse(data []byte) error {
 	if len(data) < 32 {
 		return errors.New("data is too short for pre output hash")
@@ -29,6 +39,19 @@ type TxInput struct {
 	ScriptLen common.VarInt
 	SigScript []byte
 	Sequence  uint32
+}
+
+func (txin *TxInput) Serialize() []byte {
+	var ret []byte
+	var buf = txin.PreOut.Serialize()
+	var i2b4 [4]byte
+	ret = append(ret, buf...)
+	ret = append(ret, txin.ScriptLen.Data...)
+	ret = append(ret, txin.SigScript...)
+	binary.LittleEndian.PutUint32(i2b4[:], txin.Sequence)
+	ret = append(ret, i2b4[:]...)
+
+	return ret
 }
 
 func (txin *TxInput) Parse(data []byte) error {
@@ -57,6 +80,16 @@ type TxOutput struct {
 	PkScript    []byte
 }
 
+func (txout *TxOutput) Serialize() []byte {
+	var ret []byte
+	var i2b8 [8]byte
+	binary.LittleEndian.PutUint64(i2b8[:], txout.Value)
+	ret = append(ret, i2b8[:]...)
+	ret = append(ret, txout.PkScriptLen.Data...)
+	ret = append(ret, txout.PkScript...)
+	return ret
+}
+
 func (txout *TxOutput) Parse(data []byte) error {
 	txout.Value = binary.LittleEndian.Uint64(data[:8])
 	err := txout.PkScriptLen.Parse(hex.EncodeToString(data[8:]))
@@ -75,6 +108,13 @@ func (txout *TxOutput) Len() int {
 type TxWitness struct {
 	DataLen common.VarInt
 	Data    []byte
+}
+
+func (txw *TxWitness) Serialize() []byte {
+	var ret []byte
+	ret = append(ret, txw.DataLen.Data...)
+	ret = append(ret, txw.Data...)
+	return ret
 }
 
 func (txw *TxWitness) Parse(data []byte) error {
@@ -104,6 +144,63 @@ type TxPayload struct {
 	Locktime     uint32
 }
 
+func (txp *TxPayload) TxHash() [32]byte {
+	var i2b4 [4]byte
+	var ret []byte
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Version)
+	ret = append(ret, i2b4[:]...)
+	if len(txp.Marker) != 0 {
+		ret = append(ret, txp.Marker...)
+	}
+	if len(txp.Flag) != 0 {
+		ret = append(ret, txp.Flag...)
+	}
+
+	ret = append(ret, txp.TxinCount.Data...)
+	for i := uint64(0); i < txp.TxinCount.Value; i++ {
+		in := txp.Txins[i].Serialize()
+		ret = append(ret, in...)
+	}
+	ret = append(ret, txp.TxoutCount.Data...)
+	for i := uint64(0); i < txp.TxoutCount.Value; i++ {
+		out := txp.TxOuts[i].Serialize()
+		ret = append(ret, out...)
+	}
+	if len(txp.WitnessCount) != 0 {
+		ret = append(ret, txp.WitnessCount[0].Data...)
+		for i := uint64(0); i < txp.WitnessCount[0].Value; i++ {
+			witness := txp.TxWitnesses[i].Serialize()
+			ret = append(ret, witness...)
+		}
+	}
+
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Locktime)
+	ret = append(ret, i2b4[:]...)
+	log.Info("tx serialized:", hex.EncodeToString(ret))
+	return common.Sha256AfterSha256(ret)
+}
+
+func (txp *TxPayload) Txid() [32]byte {
+	var i2b4 [4]byte
+	var ret []byte
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Version)
+	ret = append(ret, i2b4[:]...)
+	ret = append(ret, txp.TxinCount.Data...)
+	for i := uint64(0); i < txp.TxinCount.Value; i++ {
+		in := txp.Txins[i].Serialize()
+		ret = append(ret, in...)
+	}
+	ret = append(ret, txp.TxoutCount.Data...)
+	for i := uint64(0); i < txp.TxoutCount.Value; i++ {
+		out := txp.TxOuts[i].Serialize()
+		ret = append(ret, out...)
+	}
+
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Locktime)
+	ret = append(ret, i2b4[:]...)
+	return common.Sha256AfterSha256(ret)
+}
+
 func (txp *TxPayload) Len() int {
 	var length = 4 + len(txp.Marker) + len(txp.Flag) + txp.TxinCount.Len()
 	for i := uint64(0); i < txp.TxinCount.Value; i++ {
@@ -124,6 +221,10 @@ func (txp *TxPayload) Len() int {
 }
 
 func (txp *TxPayload) Parse(data []byte) error {
+	log.Info("txpayload size:", len(data))
+	log.Info("tx data:", hex.EncodeToString(data))
+	txhash := common.Sha256AfterSha256(data)
+	log.Info("tx hash:", hex.EncodeToString(txhash[:]))
 	var isWitness = false
 	var start = 0
 	txp.Version = binary.LittleEndian.Uint32(data[:4])
@@ -185,8 +286,6 @@ func (txp *TxPayload) Parse(data []byte) error {
 	return nil
 }
 
-var TxPool map[[32]byte][]byte
-
 func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 	_ = peer
 	//todo:验证交易是否合法
@@ -195,12 +294,14 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 
 	//看来还挺难搞哦，这个可能刚刚被打包进区块了，所以交易池没有这个交易，如果就这么再添加到交易池的话，那就是很大的bug了。
 	//要解决这种问题，看来只能把所有区块都同步下来并回，才能确定唯一性。
-	if _, ok := TxPool[txHash]; !ok { //todo:先暂时这么粗暴的做，这里肯定有bug
-		TxPool[txHash] = payload
+	node.mu.Lock()
+	if _, ok := node.txPool[txHash]; !ok { //todo:先暂时这么粗暴的做，这里肯定有bug
+		node.txPool[txHash] = payload
 	}
+	node.mu.Unlock()
 	return nil
 }
 
 func init() {
-	TxPool = make(map[[32]byte][]byte)
+
 }

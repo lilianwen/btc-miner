@@ -10,10 +10,10 @@ func NewMempoolMsg() (*Msg, error) {
 	return NewMsg("mempool", nil)
 }
 
-//todo:这里需要好好想想，怎样才算是真正的同步成功了呢？还是直接放任不管了？
+//todo:这里需要好好想想，怎样才算是真正的同步成功了呢？
 func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 	//发送mempool消息，接收inv消息
-	node.mu.Lock()
+	node.mu.RLock()
 	count := 0
 	for addr, peer := range node.Peers {
 		msg, err := NewMempoolMsg()
@@ -31,6 +31,6 @@ func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 			break
 		}
 	}
-	node.mu.Unlock()
+	node.mu.RUnlock()
 	wg.Done()
 }

@@ -65,10 +65,10 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 				//存储到交易池中去,交易池用什么存？leveldb？rockdb?
 				//查询本地是否有该交易？没有就验证交易，通过验证之后就加入交易池
 				//todo:暂时省去验证交易的功能，直接认为是合法交易，将来再加上
-				if _, ok := TxPool[hash]; !ok {
+				if _, ok := node.txPool[hash]; !ok {
 					//本地没有这个tx,发送getdata消息给节点获取交易数据
 					//如果不想知道交易详情，其实是可以不去get交易数据的
-					//toGetData = true
+					toGetData = true
 				}
 
 			}
