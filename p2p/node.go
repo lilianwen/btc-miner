@@ -53,6 +53,8 @@ func (node *Node) Start() {
 		wg.Add(1)
 		go node.PingPeers(&wg)
 
+		//一定要注意时序，必须要在握手协议完成之后才能进行后续的P2P通信
+		<-peer.HandShakeDone
 		wg.Add(1)
 		go node.SyncMempool(&wg)
 	}
@@ -99,6 +101,7 @@ func NewNode(cfg *common.Config) *Node {
 		"pong":      (*Node).HandlePong,
 		"getblocks": (*Node).HandleGetblocks,
 		"inv":       (*Node).HandleInv,
+		"block":     (*Node).HandleBlock,
 	}
 	var mapPeers = make(map[string]Peer)
 	for _, addr := range cfg.RemotePeers {

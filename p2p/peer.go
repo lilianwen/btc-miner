@@ -7,15 +7,17 @@ import (
 )
 
 type Peer struct {
-	Version int32
-	Conn    net.Conn
-	Addr    string    //形式如ip:port
-	Alive   chan bool //用于查询节点是否在线
+	Version       int32
+	Conn          net.Conn
+	Addr          string    //形式如ip:port
+	Alive         chan bool //用于查询节点是否在线
+	HandShakeDone chan bool
 }
 
 func NewPeer() Peer {
 	p := Peer{}
 	p.Alive = make(chan bool, 1)
+	p.HandShakeDone = make(chan bool, 1)
 	return p
 }
 

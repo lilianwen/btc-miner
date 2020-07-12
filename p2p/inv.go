@@ -37,8 +37,8 @@ func (invp *InvPayload) Parse(data []byte) error {
 		if err := invvect.Parse(data[start:]); err != nil {
 			return err
 		}
-		log.Printf("inv[%d] type:%s\n", i, common.ObjectType2String(invvect.Type))
-		log.Printf("inv[%d] hash:%s\n", i, hex.EncodeToString(invvect.Hash[:]))
+		log.Printf("inv[%d] type:%s", i, common.ObjectType2String(invvect.Type))
+		log.Printf("inv[%d] hash:%s", i, hex.EncodeToString(invvect.Hash[:]))
 
 		invp.Inventory[i] = invvect
 		start += invvect.Len()

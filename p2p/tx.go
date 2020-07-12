@@ -92,15 +92,35 @@ func (txw *TxWitness) Len() int {
 }
 
 type TxPayload struct {
-	Version uint32
-	//Flag uint16 //标志，如果存在就一定是0001
-	TxinCount  common.VarInt
-	Txins      []TxInput
-	TxoutCount common.VarInt
-	TxOuts     []TxOutput
-	//WitnessCount //数量和txins的数量应该是相等的，坑爹的这和wiki上描述的结构不相同
-	TxWitnesses []TxWitness
-	Locktime    uint32
+	Version      uint32
+	Marker       []byte //隔离见证标志，如果存在就一定是00
+	Flag         []byte //隔离见证标志，如果存在就一定是01
+	TxinCount    common.VarInt
+	Txins        []TxInput
+	TxoutCount   common.VarInt
+	TxOuts       []TxOutput
+	WitnessCount []common.VarInt //数量和txins的数量应该是相等的，坑爹的这和wiki上描述的结构不相同
+	TxWitnesses  []TxWitness
+	Locktime     uint32
+}
+
+func (txp *TxPayload) Len() int {
+	var length = 4 + len(txp.Marker) + len(txp.Flag) + txp.TxinCount.Len()
+	for i := uint64(0); i < txp.TxinCount.Value; i++ {
+		length += txp.Txins[i].Len()
+	}
+	length += txp.TxoutCount.Len()
+	for i := uint64(0); i < txp.TxoutCount.Value; i++ {
+		length += txp.TxOuts[i].Len()
+	}
+	if len(txp.WitnessCount) != 0 {
+		length += txp.WitnessCount[0].Len()
+		for i := uint64(0); i < txp.WitnessCount[0].Value; i++ {
+			length += txp.TxWitnesses[i].Len()
+		}
+	}
+	length += 4
+	return length
 }
 
 func (txp *TxPayload) Parse(data []byte) error {
@@ -110,6 +130,8 @@ func (txp *TxPayload) Parse(data []byte) error {
 	if data[4] == 0x00 && data[5] == 0x01 {
 		//说明是隔离见证交易
 		isWitness = true
+		txp.Marker = append(txp.Marker, data[4])
+		txp.Flag = append(txp.Flag, data[5])
 		start = 6
 	} else {
 		start = 4
@@ -148,6 +170,7 @@ func (txp *TxPayload) Parse(data []byte) error {
 		if witnessCount.Value != txp.TxinCount.Value {
 			return errors.New("witness count != tx input count")
 		}
+		txp.WitnessCount = append(txp.WitnessCount, witnessCount)
 		start += witnessCount.Len()
 		var witness TxWitness
 		for i := 0; i < int(witnessCount.Value); i++ {

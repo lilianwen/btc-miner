@@ -97,7 +97,10 @@ func (node *Node) HandleVersion(peer *Peer, payload []byte) error {
 }
 
 func (node *Node) HandleVerack(peer *Peer, payload []byte) error {
-	// do nothing
+	if len(peer.HandShakeDone) == 0 {
+		peer.HandShakeDone <- true
+	}
+
 	return nil
 }
 
