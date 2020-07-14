@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -18,19 +19,23 @@ import (
 
 const (
 	MaxSyncPeerCount = 3
+	MaxSyncChanLen   = 3
 )
 
 //需要种子节点列表
 type Node struct {
-	Cfg            common.Config                               //从配置文件读出来以后就不会再被改变了
-	Handlers       map[string]func(*Node, *Peer, []byte) error //存储各个消息的处理函数
-	Peers          map[string]Peer                             //按照地址映射远程节点的信息
+	Cfg            common.Config                                              //从配置文件读出来以后就不会再被改变了
+	p2pHandlers    map[string]func(*Node, *Peer, []byte) error                //存储各个p2p消息的处理函数
+	apiHandlers    map[string]func(*Node, http.ResponseWriter, *http.Request) //存储各个api消息的处理函数
+	Peers          map[string]Peer                                            //按照地址映射远程节点的信息
 	PeerAmount     uint32
 	mu             sync.RWMutex
 	PingTicker     *time.Ticker
 	StopPing       chan bool
 	txPool         map[[32]byte][]byte
 	syncBlocksDone chan bool
+	syncingBlocks  chan bool
+	isSyncBlock    bool
 	exit           bool
 }
 
@@ -83,11 +88,14 @@ func (node *Node) Start() {
 
 		//一定要注意时序，必须要在握手协议完成之后才能进行后续的P2P通信
 		<-peer.HandShakeDone
+		close(peer.HandShakeDone)
 		if !node.exit {
-			wg.Add(1)
-			go node.SyncBlock(conn, &wg)
+			go node.SyncBlock(conn) //暂时只从一个节点同步区块，todo:将来需要扩展成从多个节点同步区块
 			// 等待区块同步完成
 			<-node.syncBlocksDone
+			node.isSyncBlock = false
+			close(node.syncBlocksDone)
+			close(node.syncingBlocks)
 			log.Info("sync block done.")
 		}
 
@@ -153,7 +161,7 @@ func newNode(cfg *common.Config) *Node {
 	for _, addr := range cfg.RemotePeers {
 		peers[addr] = NewPeer()
 	}
-	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone, exit: false}
+	return &Node{Cfg: *cfg, Peers: peers, p2pHandlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone, isSyncBlock: false, exit: false}
 }
 
 // 新增节点，主要给监听服务和addr消息用
@@ -239,7 +247,7 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			break
 		}
 
-		handler, ok := node.Handlers[cmd]
+		handler, ok := node.p2pHandlers[cmd]
 		if !ok {
 			log.Errorf("not support message(%s) handler", cmd)
 			continue
@@ -298,6 +306,11 @@ func (node *Node) HandleVerack(peer *Peer, payload []byte) error {
 
 func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	log.Infof("receive block data from [%s]", peer.Addr)
+	if node.isSyncBlock {
+		if len(node.syncingBlocks) < MaxSyncChanLen {
+			node.syncingBlocks <- true
+		}
+	}
 
 	recvBlock := p2p.BlockPayload{}
 	err := recvBlock.Parse(payload)
@@ -346,8 +359,10 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	return nil
 }
 
-func (node *Node) SyncBlock(conn net.Conn, wg *sync.WaitGroup) {
+func (node *Node) SyncBlock(conn net.Conn) {
 	//发送getblocks消息给远程节点
+	node.isSyncBlock = true
+	node.syncingBlocks = make(chan bool, MaxSyncChanLen) //预留足够的空间，预留足够的检测时间
 	payload := p2p.GetblocksPayload{}
 	payload.Version = uint32(70002)                 //todo:各种version版本要灾难了，这里需要总结一下，不然乱了
 	payload.HashCount = common.NewVarInt(uint64(1)) //注意，这里固定填写1，否则远程节点会直接断开连接
@@ -362,8 +377,22 @@ func (node *Node) SyncBlock(conn net.Conn, wg *sync.WaitGroup) {
 		log.Error(err)
 		panic(err)
 	}
+
+	go node.SyncBlockMonitor()
 	log.Infof("sync block from [%s]...", conn.RemoteAddr().String())
-	wg.Done()
+}
+
+func (node *Node) SyncBlockMonitor() {
+	t := time.NewTicker(3 * time.Second)
+	for {
+		<-t.C
+		if len(node.syncingBlocks) == 0 {
+			t.Stop()
+			break
+		}
+		_ = <-node.syncingBlocks
+	}
+	node.syncBlocksDone <- true
 }
 
 func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {

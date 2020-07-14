@@ -7,9 +7,20 @@ import (
 
 func (node *Node) StartApiService(wg *sync.WaitGroup) {
 	defer wg.Done()
+	var handlers = map[string]func(*Node, http.ResponseWriter, *http.Request){
+		"/mempool": (*Node).apiMempool,
+		"/latest":  (*Node).apiLatest,
+	}
+	node.apiHandlers = handlers
 	mux := http.NewServeMux()
-	mux.Handle("/mempool", *node)
+	mux.Handle("/", *node)
 	if err := http.ListenAndServe(node.Cfg.RpcListen, mux); err != nil {
 		panic(err)
 	}
+}
+
+func (node Node) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Info(r.RequestURI)
+	handler := node.apiHandlers[r.RequestURI]
+	handler(&node, w, r)
 }
