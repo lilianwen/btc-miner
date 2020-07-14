@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"btcnetwork/common"
+	//"btcnetwork/storage"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
@@ -10,6 +11,12 @@ import (
 type PreOutput struct {
 	Hash  [32]byte
 	Index uint32
+}
+
+func NewCoinPreOutput() PreOutput {
+	preOutput := PreOutput{}
+	preOutput.Index = 0xffffffff
+	return preOutput
 }
 
 func (po *PreOutput) Serialize() []byte {
@@ -284,24 +291,4 @@ func (txp *TxPayload) Parse(data []byte) error {
 	}
 	txp.Locktime = binary.LittleEndian.Uint32(data[start : start+4])
 	return nil
-}
-
-func (node *Node) HandleTx(peer *Peer, payload []byte) error {
-	_ = peer
-	//todo:验证交易是否合法
-	//如果交易合法，则查看本地是否有该交易，如果没有就加入本地交易池
-	txHash := common.Sha256AfterSha256(payload)
-
-	//看来还挺难搞哦，这个可能刚刚被打包进区块了，所以交易池没有这个交易，如果就这么再添加到交易池的话，那就是很大的bug了。
-	//要解决这种问题，看来只能把所有区块都同步下来并回，才能确定唯一性。
-	node.mu.Lock()
-	if _, ok := node.txPool[txHash]; !ok { //todo:先暂时这么粗暴的做，这里肯定有bug
-		node.txPool[txHash] = payload
-	}
-	node.mu.Unlock()
-	return nil
-}
-
-func init() {
-
 }

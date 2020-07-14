@@ -38,26 +38,3 @@ func (p *PingPayload) Parse(data []byte) error {
 func (p *PingPayload) Len() int {
 	return 8
 }
-
-func (node *Node) HandlePing(peer *Peer, payload []byte) error {
-	var err error
-	var msgPong *Msg = nil
-	if msgPong, err = NewMsg("pong", payload); err != nil {
-		return err
-	}
-	if err = MustWrite(peer.Conn, msgPong.Serialize()); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (node *Node) HandlePong(peer *Peer, payload []byte) error {
-	//实现心跳机制
-	if len(peer.Alive) == 0 { //可能远程节点发送ping更频繁一些，这里做这个判断防止通道满了再往里写会阻塞
-		node.mu.Lock()
-		peer.Alive <- true
-		node.mu.Unlock()
-	}
-
-	return nil
-}

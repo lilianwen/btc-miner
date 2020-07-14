@@ -17,7 +17,8 @@ package cmd
 
 import (
 	"btcnetwork/common"
-	"btcnetwork/p2p"
+	"btcnetwork/node"
+	//"btcnetwork/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"strings"
@@ -55,8 +56,10 @@ func init() {
 }
 
 func startServer(cmd *cobra.Command, args []string) {
-	service := p2p.NewNode(loadConfig(cmd, args))
-	service.Start()
+	cfg := loadConfig(cmd, args)
+	//storage.Start(cfg)//启动存储服务
+	n := node.New(cfg)
+	n.Start() //启动节点服务
 }
 
 func loadConfig(cmd *cobra.Command, args []string) *common.Config {

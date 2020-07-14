@@ -10,4 +10,5 @@ type Config struct {
 	RpcListen        string
 	RemotePeers      []string
 	DnsSeed          []string
+	DataDir          string
 }

@@ -22,3 +22,11 @@ func (sb *ScriptBuilder) AddData(data []byte) *ScriptBuilder {
 func (sb *ScriptBuilder) Script() []byte {
 	return sb.script
 }
+
+func NewP2PKHScipt(pubKeyHash []byte) []byte {
+	builder := NewScriptBuilder()
+	builder.AddCode(OP_DUP).AddCode(OP_HASH160)
+	builder.AddData(pubKeyHash)
+	builder.AddCode(OP_EQUALVERIFY).AddCode(OP_CHECKSIG)
+	return builder.Script()
+}

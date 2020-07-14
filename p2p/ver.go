@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"encoding/binary"
+	"github.com/sirupsen/logrus"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -79,31 +80,6 @@ func NewVersionPayloadUncheck(ipAddr string, port uint16) *VersionPayload {
 	return &vp
 }
 
-func (node *Node) HandleVersion(peer *Peer, payload []byte) error {
-	//根据网络协议，收到version消息，就应该发送一个verack报文给对方
-	versionPayload := VersionPayload{}
-	versionPayload.Parse(payload)
-	peer.Version = versionPayload.Version
-
-	verackMsg, err := NewMsg("verack", nil)
-	if err != nil {
-		return err
-	}
-	if err = MustWrite(peer.Conn, verackMsg.Serialize()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (node *Node) HandleVerack(peer *Peer, payload []byte) error {
-	if len(peer.HandShakeDone) == 0 {
-		peer.HandShakeDone <- true
-	}
-
-	return nil
-}
-
 func NewVerMsg(address string) (*Msg, error) {
 	addr := strings.Split(address, ":")
 	ip := addr[0]
@@ -113,4 +89,10 @@ func NewVerMsg(address string) (*Msg, error) {
 	}
 	payload := NewVersionPayloadUncheck(ip, uint16(port))
 	return NewMsg("version", payload.Serialize())
+}
+
+var log *logrus.Logger
+
+func init() {
+	log = logrus.New()
 }

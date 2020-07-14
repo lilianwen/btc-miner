@@ -1,6 +1,7 @@
-package p2p
+package node
 
 import (
+	"btcnetwork/p2p"
 	"net"
 	"sync"
 	"time"
@@ -12,12 +13,14 @@ type Peer struct {
 	Addr          string    //形式如ip:port
 	Alive         chan bool //用于查询节点是否在线
 	HandShakeDone chan bool
+	SyncBlockDone chan bool
 }
 
 func NewPeer() Peer {
 	p := Peer{}
 	p.Alive = make(chan bool, 1)
 	p.HandShakeDone = make(chan bool, 1)
+	p.SyncBlockDone = make(chan bool, 1)
 	return p
 }
 
@@ -32,7 +35,7 @@ deadloop:
 				}
 
 				//给该节点发送ping消息
-				msg := NewPingMsg()
+				msg := p2p.NewPingMsg()
 				log.Infof("send ping message to peer[%s]", peer.Addr)
 				if err := node.sendMsg(peer.Conn, msg.Serialize()); err != nil {
 					log.Errorln(err)
