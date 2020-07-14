@@ -18,6 +18,8 @@ package cmd
 import (
 	"btcnetwork/common"
 	"btcnetwork/node"
+	"btcnetwork/storage"
+
 	//"btcnetwork/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -57,7 +59,7 @@ func init() {
 
 func startServer(cmd *cobra.Command, args []string) {
 	cfg := loadConfig(cmd, args)
-	//storage.Start(cfg)//启动存储服务
+	storage.Start(cfg) //启动存储服务
 	n := node.New(cfg)
 	n.Start() //启动节点服务
 }

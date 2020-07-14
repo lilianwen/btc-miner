@@ -15,17 +15,17 @@ type GetblocksPayload struct {
 }
 
 func (gp *GetblocksPayload) Serialize() []byte {
-	var buf []byte
-	var uint32Buf [4]byte
+	var ret []byte
+	var i2b4 [4]byte
 
-	binary.LittleEndian.PutUint32(uint32Buf[:], gp.Version)
+	binary.LittleEndian.PutUint32(i2b4[:], gp.Version)
 
-	buf = append(buf, uint32Buf[:]...)
-	buf = append(buf, gp.HashCount.Data...)
-	buf = append(buf, gp.HashStart[:]...)
-	buf = append(buf, gp.HashStop[:]...)
+	ret = append(ret, i2b4[:]...)
+	ret = append(ret, gp.HashCount.Data...)
+	ret = append(ret, gp.HashStart[:]...)
+	ret = append(ret, gp.HashStop[:]...)
 
-	return buf
+	return ret
 }
 
 func (gp *GetblocksPayload) Parse(data []byte) error {

@@ -4,6 +4,7 @@ import (
 	"btcnetwork/block"
 	"btcnetwork/common"
 	"btcnetwork/p2p"
+	"btcnetwork/storage"
 	"encoding/hex"
 	"errors"
 	"github.com/sirupsen/logrus"
@@ -20,14 +21,15 @@ const (
 
 //需要种子节点列表
 type Node struct {
-	Cfg        common.Config                               //从配置文件读出来以后就不会再被改变了
-	Handlers   map[string]func(*Node, *Peer, []byte) error //存储各个消息的处理函数
-	Peers      map[string]Peer                             //按照地址映射远程节点的信息
-	PeerAmount uint32
-	mu         sync.RWMutex
-	PingTicker *time.Ticker
-	StopPing   chan bool
-	txPool     map[[32]byte][]byte
+	Cfg            common.Config                               //从配置文件读出来以后就不会再被改变了
+	Handlers       map[string]func(*Node, *Peer, []byte) error //存储各个消息的处理函数
+	Peers          map[string]Peer                             //按照地址映射远程节点的信息
+	PeerAmount     uint32
+	mu             sync.RWMutex
+	PingTicker     *time.Ticker
+	StopPing       chan bool
+	txPool         map[[32]byte][]byte
+	syncBlocksDone chan bool
 }
 
 func (node *Node) Start() {
@@ -65,7 +67,9 @@ func (node *Node) Start() {
 		//一定要注意时序，必须要在握手协议完成之后才能进行后续的P2P通信
 		<-peer.HandShakeDone
 		wg.Add(1)
-		go node.SyncBlock(&wg)
+		go node.SyncBlock(conn, &wg)
+		// 等待区块同步完成
+		<-node.syncBlocksDone
 
 		wg.Add(1)
 		go node.SyncMempool(&wg)
@@ -122,10 +126,11 @@ func New(cfg *common.Config) *Node {
 	}
 	var peers = make(map[string]Peer)
 	var txpool = make(map[[32]byte][]byte)
+	var syncBlocksDone = make(chan bool, 1)
 	for _, addr := range cfg.RemotePeers {
 		peers[addr] = NewPeer()
 	}
-	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool}
+	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone}
 }
 
 // 新增节点，主要给监听服务和addr消息用
@@ -299,12 +304,29 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 		log.Error("calculate merkle root hash not equal to block header merkle root hash")
 		log.Errorf("get:%s, want:%s", root.Value, wantMerkleRootHash)
 	}
+
+	// 把收到的区块数据存进leveldb
+	// storage.Store(&recvBlock)
 	return nil
 }
 
-func (node *Node) SyncBlock(wg *sync.WaitGroup) {
+func (node *Node) SyncBlock(conn net.Conn, wg *sync.WaitGroup) {
 	//发送getblocks消息给远程节点
-
+	payload := p2p.GetblocksPayload{}
+	payload.Version = uint32(70002)                                               //todo:各种version版本要灾难了，这里需要总结一下，不然乱了
+	payload.HashCount = common.NewVarInt(uint64(storage.LatestBlockHeight() + 1)) //表示我目前有多少个区块
+	latestBlockHash := storage.LatestBlockHash()
+	copy(payload.HashStart[:], latestBlockHash[:])
+	msg, err := p2p.NewMsg("getblocks", payload.Serialize())
+	if err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	if err = p2p.MustWrite(conn, msg.Serialize()); err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	log.Infof("sync block from [%s]...", conn.RemoteAddr().String())
 }
 
 func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
@@ -323,7 +345,7 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 	latestBlockHash := node.GetLatestBlockHash()
 	hashStart := hex.EncodeToString(gp.HashStart[:])
 	if latestBlockHash != hashStart {
-		if node.HasBlockHash(hashStart) { //说明我的区块较对方节点更新
+		if storage.HasBlockHash(gp.HashStart) { //说明我的区块较对方节点更新
 			// todo:把我的区块发送给他
 			return errors.New("not support sending blocks to remote peers")
 		} else {
@@ -351,11 +373,6 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 // todo: 获取本地最新的区块哈希
 func (node *Node) GetLatestBlockHash() string {
 	return "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
-}
-
-// todo:判断本地是否有该哈希值
-func (node *Node) HasBlockHash(hash string) bool {
-	return false
 }
 
 func (node *Node) HandleGetdata(peer *Peer, payload []byte) error {
@@ -442,6 +459,7 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 	}
 	if count != uint64(0) {
 		//发送getdata消息给节点获取数据
+		// 这里要注意，getdata每次最多发送128条数据条目
 		msg, err := p2p.NewMsg("getdata", p2p.NewGetdataPayload(count, invVect).Serialize())
 		if err != nil {
 			return err

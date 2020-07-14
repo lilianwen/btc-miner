@@ -4,7 +4,12 @@ import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
 	"encoding/binary"
+	"encoding/hex"
 	"github.com/syndtr/goleveldb/leveldb"
+)
+
+var (
+	LatestBlockKey = []byte("latestblock")
 )
 
 type blockMgr struct {
@@ -38,10 +43,8 @@ func newBlockMgr(cfg *common.Config) *blockMgr {
 	s.done = make(chan bool, 1)
 	s.newBlock = make(chan p2p.BlockPayload)
 
-	//todo:很奇怪啊，这里必须先声明，不能用:=,以后在看看这是问么原因
 	var err error
-	s.DBhash2block, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/hash2block", nil)
-	if err != nil {
+	if s.DBhash2block, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/hash2block", nil); err != nil {
 		log.Error(err)
 		panic(err)
 	}
@@ -82,6 +85,7 @@ deadloop:
 	_ = bm.DBhash2block.Close()
 	_ = bm.DBheight2hash.Close()
 	_ = bm.DBhash2height.Close()
+	_ = bm.DBlatestblock.Close()
 	close(bm.newBlock)
 	close(bm.stop)
 	log.Info("exit db mamager")
@@ -112,7 +116,7 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 		log.Error(err)
 		return err
 	}
-	if err = bm.DBlatestblock.Put([]byte("latestblock"), i2b4[:], nil); err != nil {
+	if err = bm.DBlatestblock.Put(LatestBlockKey, i2b4[:], nil); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -127,4 +131,30 @@ func (bm *blockMgr) hash2Height(hash [32]byte) (uint32, error) {
 	}
 	height := binary.LittleEndian.Uint32(buf)
 	return height, nil
+}
+
+//func (bm *blockMgr)genesisBlock() *p2p.BlockPayload {
+//	genesisBlockInRaw := "" //not found data,so quit
+//	buf, _ := hex.DecodeString(genesisBlockInRaw)
+//	genesisBlock := p2p.BlockPayload{}
+//	_ = genesisBlock.Parse(buf)
+//	return &genesisBlock
+//}
+
+func (bm *blockMgr) genesisBlockHash() [32]byte {
+	genesisBlockHash := "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
+	var buf []byte
+	buf, _ = hex.DecodeString(genesisBlockHash)
+	var hash [32]byte
+	copy(hash[:], buf)
+	return hash
+}
+
+func (bm *blockMgr) IsEmpty() bool {
+	has, err := defaultBlockMgr.DBlatestblock.Has(LatestBlockKey, nil)
+	if err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	return !has
 }

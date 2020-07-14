@@ -3,6 +3,7 @@ package storage
 import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
+	"encoding/binary"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -34,6 +35,47 @@ func Stop() {
 // todo:根据区块哈希找出区块数据
 func BlockFromHash(hash [32]byte) (*p2p.BlockPayload, error) {
 	return nil, ErrBlockNotFound
+}
+
+func HasBlockHash(hash [32]byte) bool {
+	has, err := defaultBlockMgr.DBhash2block.Has(hash[:], nil)
+	if err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	return has
+}
+
+func LatestBlockHeight() uint32 {
+	if defaultBlockMgr.IsEmpty() { //如果是空的就返回创世区块哈希
+		return 0
+	}
+	var buf []byte
+	var err error
+	if buf, err = defaultBlockMgr.DBlatestblock.Get(LatestBlockKey, nil); err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	return binary.LittleEndian.Uint32(buf)
+}
+
+func LatestBlockHash() [32]byte {
+	if defaultBlockMgr.IsEmpty() { //如果是空的就返回创世区块哈希
+		return defaultBlockMgr.genesisBlockHash()
+	}
+	var buf []byte
+	var err error
+	if buf, err = defaultBlockMgr.DBlatestblock.Get(LatestBlockKey, nil); err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	var hash [32]byte
+	if buf, err = defaultBlockMgr.DBheight2hash.Get(buf, nil); err != nil {
+		log.Error(err)
+		panic(err)
+	}
+	copy(hash[:], buf)
+	return hash
 }
 
 // todo:根据区块高度找出区块数据
