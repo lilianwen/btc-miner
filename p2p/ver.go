@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"btcnetwork/common"
 	"encoding/binary"
 	"github.com/sirupsen/logrus"
 	"math/rand"
@@ -95,4 +96,5 @@ var log *logrus.Logger
 
 func init() {
 	log = logrus.New()
+	log.SetLevel(common.LogLevel)
 }

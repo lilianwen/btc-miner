@@ -1,7 +1,6 @@
 package block
 
 import (
-	"btcnetwork/common"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -65,14 +64,12 @@ func (bh *Header) Parse(headerInRaw string) error {
 	}
 	bh.BlockVersion = int32(binary.LittleEndian.Uint32(dataUint32))
 
-	//前一个区块哈希值大端存储，顺序要反过来
-	if tmp, err = common.ReverseBigEdianString(headerInRaw[8:72]); err != nil {
+	if tmp, err = hex.DecodeString(headerInRaw[8:72]); err != nil {
 		return err
 	}
 	copy(bh.PreHash[:], tmp)
 
-	//Root Merkle Hash也是大端存储，顺序要反过来
-	if tmp, err = common.ReverseBigEdianString(headerInRaw[72:136]); err != nil {
+	if tmp, err = hex.DecodeString(headerInRaw[72:136]); err != nil {
 		return err
 	}
 	copy(bh.MerkleRootHash[:], tmp)

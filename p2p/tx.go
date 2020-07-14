@@ -183,7 +183,7 @@ func (txp *TxPayload) TxHash() [32]byte {
 
 	binary.LittleEndian.PutUint32(i2b4[:], txp.Locktime)
 	ret = append(ret, i2b4[:]...)
-	log.Info("tx serialized:", hex.EncodeToString(ret))
+	log.Debug("tx serialized:", hex.EncodeToString(ret))
 	return common.Sha256AfterSha256(ret)
 }
 
@@ -228,10 +228,10 @@ func (txp *TxPayload) Len() int {
 }
 
 func (txp *TxPayload) Parse(data []byte) error {
-	log.Info("txpayload size:", len(data))
-	log.Info("tx data:", hex.EncodeToString(data))
+	log.Debug("txpayload size:", len(data))
+	log.Debug("tx data:", hex.EncodeToString(data))
 	txhash := common.Sha256AfterSha256(data)
-	log.Info("tx hash:", hex.EncodeToString(txhash[:]))
+	log.Debug("tx hash:", hex.EncodeToString(txhash[:]))
 	var isWitness = false
 	var start = 0
 	txp.Version = binary.LittleEndian.Uint32(data[:4])

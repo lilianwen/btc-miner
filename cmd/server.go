@@ -51,6 +51,7 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	log = logrus.New()
+	log.SetLevel(common.LogLevel)
 	rootCmd.AddCommand(serverCmd)
 
 	// Here you will define your flags and configuration settings.

@@ -5,11 +5,14 @@ import (
 	"btcnetwork/p2p"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"reflect"
 )
 
 var (
 	LatestBlockKey = []byte("latestblock")
+	ErrOphanBlock  = errors.New("ophan block")
 )
 
 type blockMgr struct {
@@ -40,7 +43,7 @@ func newBlockMgr(cfg *common.Config) *blockMgr {
 	s := blockMgr{}
 	s.stop = make(chan bool, 1)
 	s.done = make(chan bool, 1)
-	s.newBlock = make(chan p2p.BlockPayload)
+	s.newBlock = make(chan p2p.BlockPayload, 500) //todo:仔细考量一下这个数字该如何定
 
 	var err error
 	if s.DBhash2block, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/hash2block", nil); err != nil {
@@ -48,17 +51,17 @@ func newBlockMgr(cfg *common.Config) *blockMgr {
 		panic(err)
 	}
 
-	if s.DBhash2height, err = leveldb.OpenFile(cfg.DataDir+"blockchain/block/hash2height", nil); err != nil {
+	if s.DBhash2height, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/hash2height", nil); err != nil {
 		log.Error(err)
 		panic(err)
 	}
 
-	if s.DBheight2hash, err = leveldb.OpenFile(cfg.DataDir+"blockchain/block/height2hash", nil); err != nil {
+	if s.DBheight2hash, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/height2hash", nil); err != nil {
 		log.Error(err)
 		panic(err)
 	}
 
-	if s.DBlatestblock, err = leveldb.OpenFile(cfg.DataDir+"blockchain/block/latestblock", nil); err != nil {
+	if s.DBlatestblock, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/block/latestblock", nil); err != nil {
 		log.Error(err)
 		panic(err)
 	}
@@ -75,10 +78,17 @@ deadloop:
 			break deadloop
 
 		case nb = <-bm.newBlock:
+			log.Info("update a block...")
 			err := bm.updateDBs(&nb)
 			if err != nil {
+				if err == ErrOphanBlock {
+					log.Info(err)
+					continue
+				}
+				log.Error(err)
 				break deadloop
 			}
+			log.Info("update a block done.")
 		}
 	}
 	_ = bm.DBhash2block.Close()
@@ -93,17 +103,30 @@ deadloop:
 
 //把新区块写入leveldb
 func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
+	var preHeight uint32
+	preHash := newBlock.PreHash
+	genesisBlockHash := bm.genesisBlockHash()
+	if reflect.DeepEqual(preHash[:], genesisBlockHash[:]) { //处理创世区块没有前区块高度的问题
+		preHeight = 0
+	} else {
+		var err error
+		preHeight, err = bm.hash2Height(preHash) //根据区块哈希找区块高度
+		if err != nil {
+			log.Error(err)
+			//可能没找到这个哈希值，那当前这个区块可能就是一个孤块,处理孤块
+			return ErrOphanBlock
+		}
+	}
+
+	log.Info("blockheader: >>", hex.EncodeToString(newBlock.Header.Serialize()))
 	hash := common.Sha256AfterSha256(newBlock.Header.Serialize())
+	log.Info("storage----hash:", hex.EncodeToString(hash[:]))
 	err := bm.DBhash2block.Put(hash[:], newBlock.Serialize(), nil)
 	if err != nil {
 		log.Error(err)
 	}
-	preHash := newBlock.PreHash
-	height, err := bm.hash2Height(preHash) //根据区块哈希找区块高度
-	if err != nil {
-		//可能没找到这个哈希值，那当前这个区块可能就是一个孤块,处理孤块
-	}
-	curHeight := height + 1
+
+	curHeight := preHeight + 1
 	var i2b4 [4]byte
 	binary.LittleEndian.PutUint32(i2b4[:], curHeight)
 	if err = bm.DBheight2hash.Put(i2b4[:], hash[:], nil); err != nil {
@@ -119,6 +142,7 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 		log.Error(err)
 		return err
 	}
+	log.Info("update block height:", curHeight)
 	return nil
 }
 
@@ -131,14 +155,6 @@ func (bm *blockMgr) hash2Height(hash [32]byte) (uint32, error) {
 	height := binary.LittleEndian.Uint32(buf)
 	return height, nil
 }
-
-//func (bm *blockMgr)genesisBlock() *p2p.BlockPayload {
-//	genesisBlockInRaw := "" //not found data,so quit
-//	buf, _ := hex.DecodeString(genesisBlockInRaw)
-//	genesisBlock := p2p.BlockPayload{}
-//	_ = genesisBlock.Parse(buf)
-//	return &genesisBlock
-//}
 
 func (bm *blockMgr) genesisBlockHash() [32]byte {
 	genesisBlockHash := "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"

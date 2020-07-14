@@ -22,7 +22,6 @@ func Store(newBlock *p2p.BlockPayload) {
 	if !stop {
 		defaultBlockMgr.newBlock <- *newBlock
 	}
-
 }
 
 func Start(cfg *common.Config) {
@@ -106,4 +105,5 @@ func Tx(txid [32]byte) (*p2p.TxPayload, error) {
 
 func init() {
 	log = logrus.New()
+	log.SetLevel(common.LogLevel)
 }

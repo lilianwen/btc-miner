@@ -88,6 +88,7 @@ func (node *Node) Start() {
 			go node.SyncBlock(conn, &wg)
 			// 等待区块同步完成
 			<-node.syncBlocksDone
+			log.Info("sync block done.")
 		}
 
 		if !node.exit {
@@ -226,7 +227,7 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		}
 
 		cmd := common.Byte2String(header.Command[:])
-		log.Printf("received from [%s] message:[%s]", conn.RemoteAddr().String(), cmd)
+		log.Infof("received from [%s] message:[%s]", conn.RemoteAddr().String(), cmd)
 
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
@@ -305,10 +306,11 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	}
 
 	//开始验证区块的合法性
+	log.Debug("blockheader: >", hex.EncodeToString(payload[:recvBlock.Header.Len()]))
 	blockHash := common.Sha256AfterSha256(payload[:recvBlock.Header.Len()])
-	log.Infoln("block hash:", hex.EncodeToString(blockHash[:]))
-	log.Infoln("block merkle root hash:", hex.EncodeToString(recvBlock.MerkleRootHash[:]))
-	log.Infoln("pre block hash:", hex.EncodeToString(recvBlock.PreHash[:]))
+	log.Info("----------------block hash:", hex.EncodeToString(blockHash[:]))
+	log.Debug("block merkle root hash:", hex.EncodeToString(recvBlock.MerkleRootHash[:]))
+	log.Debug("pre block hash:", hex.EncodeToString(recvBlock.PreHash[:]))
 	//处理区块里的交易数据
 
 	var hashes []string
@@ -322,31 +324,33 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 		node.mu.Unlock()
 
 		//strHash := hex.EncodeToString(common.ReverseBytes(txHash[:]))
-		log.Infof("tx[%d].txhash=%s, size=%d", i, hex.EncodeToString(txHash[:]), recvBlock.Txns[i].Len())
+		log.Debug("tx[%d].txhash=%s, size=%d", i, hex.EncodeToString(txHash[:]), recvBlock.Txns[i].Len())
 		txid := recvBlock.Txns[i].Txid()
 		strID := hex.EncodeToString(common.ReverseBytes(txid[:]))
-		log.Infof("tx[%d].txid=%s", i, strID)
+		log.Debug("tx[%d].txid=%s", i, strID)
 		hashes = append(hashes, strID)
 
 	}
 	//构建默克尔树验证区块头的默克尔根值
-	root, err := block.ConstructMerkleRoot(hashes)
-	wantMerkleRootHash := hex.EncodeToString(recvBlock.MerkleRootHash[:])
+	root, err := block.ConstructMerkleRoot(hashes) //这里算出来的是给人类看的逆序的merkle根
+	var merkleHashCopy [32]byte
+	copy(merkleHashCopy[:], recvBlock.MerkleRootHash[:])
+	wantMerkleRootHash := hex.EncodeToString(common.ReverseBytes(merkleHashCopy[:]))
 	if root.Value != wantMerkleRootHash {
 		log.Error("calculate merkle root hash not equal to block header merkle root hash")
 		log.Errorf("get:%s, want:%s", root.Value, wantMerkleRootHash)
 	}
 
 	// 把收到的区块数据存进leveldb
-	// storage.Store(&recvBlock)
+	storage.Store(&recvBlock)
 	return nil
 }
 
 func (node *Node) SyncBlock(conn net.Conn, wg *sync.WaitGroup) {
 	//发送getblocks消息给远程节点
 	payload := p2p.GetblocksPayload{}
-	payload.Version = uint32(70002)                                               //todo:各种version版本要灾难了，这里需要总结一下，不然乱了
-	payload.HashCount = common.NewVarInt(uint64(storage.LatestBlockHeight() + 1)) //表示我目前有多少个区块
+	payload.Version = uint32(70002)                 //todo:各种version版本要灾难了，这里需要总结一下，不然乱了
+	payload.HashCount = common.NewVarInt(uint64(1)) //注意，这里固定填写1，否则远程节点会直接断开连接
 	latestBlockHash := storage.LatestBlockHash()
 	copy(payload.HashStart[:], latestBlockHash[:])
 	msg, err := p2p.NewMsg("getblocks", payload.Serialize())
@@ -368,9 +372,9 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Println("get hash count:", gp.HashCount.Value)
-	log.Println("hash start:", hex.EncodeToString(gp.HashStart[:]))
-	log.Println("hash stop:", hex.EncodeToString(gp.HashStop[:]))
+	log.Debug("get hash count:", gp.HashCount.Value)
+	log.Debug("hash start:", hex.EncodeToString(gp.HashStart[:]))
+	log.Debug("hash stop:", hex.EncodeToString(gp.HashStop[:]))
 
 	//对方节点告诉我他的最新的区块hash值是多少，他想要的最新的区块哈希值是多少（如果是全0）表示他想要我的最新的区块
 	//我对比一下我这边的最新区块哈希值和它的是不是相同，如果相同表示我们拥有相同的区块数据，
@@ -400,11 +404,6 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 
 	return nil
 }
-
-//
-//func (node *Node) GetLatestBlockHash() string {
-//	return "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
-//}
 
 func (node *Node) HandleGetdata(peer *Peer, payload []byte) error {
 	//主要处理block和tx这两种数据，其他的暂时忽略
@@ -469,7 +468,7 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 			{
 				//存储到区块中去,区块怎么存储到硬盘上？用什么格式？要不要压缩？
 				//查看本地是否有该区块，如果没有就验证区块和区块里的交易，通过之后就加入本地区块
-				if !HasBlock(hash) {
+				if !storage.HasBlockHash(hash) {
 					//本地没有这个tx,发送getdata消息给节点获取交易数据
 					toGetData = true
 				}
@@ -503,12 +502,6 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 	return nil
 }
 
-//todo:查看本地是否有这个区块哈希对应的区块，有就返回true.暂时不知道放哪，先放这里好了。
-func HasBlock(blockHash [32]byte) bool {
-	_ = blockHash
-	return false
-}
-
 //todo:这里需要好好想想，怎样才算是真正的同步成功了呢？
 func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 	//发送mempool消息，接收inv消息
@@ -523,7 +516,7 @@ func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 			log.Errorln(err)
 			continue
 		}
-		log.Infof("sync memery pool from [%s]", addr)
+		log.Infof("sync memory pool from [%s]", addr)
 
 		count++
 		if count >= MaxSyncPeerCount {
@@ -578,4 +571,5 @@ var log *logrus.Logger
 
 func init() {
 	log = logrus.New()
+	log.SetLevel(common.LogLevel)
 }
