@@ -70,18 +70,20 @@ deadloop:
 	um.dbUtxo.Close()
 	close(um.stop)
 	close(um.tx)
-	log.Info("exit utxo manager.")
-	close(um.done)
+	log.Info("exit utxo manager...")
+	um.done <- true
 }
 
 func startUtxoMgr(cfg *common.Config) {
 	defaultUtxoMgr = newUtxoMgr(cfg)
+	go defaultUtxoMgr.manageUtxo()
 }
 
 func stopUtxoMgr() {
 	defaultUtxoMgr.stop <- true
 
 	<-defaultUtxoMgr.done
+	close(defaultUtxoMgr.done)
 }
 
 func utxo(key [36]byte) (*p2p.TxOutput, error) {

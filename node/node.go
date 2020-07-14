@@ -13,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	//"internal/poll"
 )
 
 const (
@@ -30,6 +31,22 @@ type Node struct {
 	StopPing       chan bool
 	txPool         map[[32]byte][]byte
 	syncBlocksDone chan bool
+	exit           bool
+}
+
+var defaultNode *Node
+
+func Start(cfg *common.Config) {
+	defaultNode = newNode(cfg) //写成new会和golang内置的new重名
+	go defaultNode.Start()
+}
+
+func Stop() {
+	defaultNode.exit = true
+	// 关闭定时检测节点服务
+	defaultNode.closePeerCheck()
+	// 关闭所有的p2p连接节点
+	defaultNode.disconnetAllPeers()
 }
 
 func (node *Node) Start() {
@@ -66,17 +83,22 @@ func (node *Node) Start() {
 
 		//一定要注意时序，必须要在握手协议完成之后才能进行后续的P2P通信
 		<-peer.HandShakeDone
-		wg.Add(1)
-		go node.SyncBlock(conn, &wg)
-		// 等待区块同步完成
-		<-node.syncBlocksDone
+		if !node.exit {
+			wg.Add(1)
+			go node.SyncBlock(conn, &wg)
+			// 等待区块同步完成
+			<-node.syncBlocksDone
+		}
 
-		wg.Add(1)
-		go node.SyncMempool(&wg)
+		if !node.exit {
+			wg.Add(1)
+			go node.SyncMempool(&wg)
+		}
 
-		//
-		wg.Add(1)
-		go node.StartApiService(&wg)
+		if !node.exit {
+			wg.Add(1)
+			go node.StartApiService(&wg)
+		}
 	}
 
 	go node.listenPeers(&wg)
@@ -113,7 +135,7 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 	}
 }
 
-func New(cfg *common.Config) *Node {
+func newNode(cfg *common.Config) *Node {
 	var handlers = map[string]func(*Node, *Peer, []byte) error{
 		"version":   (*Node).HandleVersion,
 		"verack":    (*Node).HandleVerack,
@@ -130,7 +152,7 @@ func New(cfg *common.Config) *Node {
 	for _, addr := range cfg.RemotePeers {
 		peers[addr] = NewPeer()
 	}
-	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone}
+	return &Node{Cfg: *cfg, Peers: peers, Handlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone, exit: false}
 }
 
 // 新增节点，主要给监听服务和addr消息用
@@ -195,9 +217,9 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		header, err := readMsgHeader(conn)
 		if err != nil {
 			if err == io.EOF {
-				log.Errorf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Errorln(err.Error())
+				log.Errorln(err) // todo: 解决ERRO[0006] read tcp 127.0.0.1:57380->127.0.0.1:9333: use of closed network connection
 			}
 
 			break
@@ -209,11 +231,10 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 		payload, err := readPayload(conn, header.LenOfPayload)
 		if err != nil {
 			if err == io.EOF {
-				log.Errorf("remote peer(%s) close connection.", conn.RemoteAddr().String())
+				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
 				log.Errorln(err)
 			}
-
 			break
 		}
 
@@ -236,6 +257,17 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 	delete(node.Peers, conn.RemoteAddr().String())
 	node.mu.Unlock()
 	wg.Done()
+}
+
+func (node *Node) closePeerCheck() {
+	//close(node.PingTicker)
+	node.PingTicker.Stop()
+}
+
+func (node *Node) disconnetAllPeers() {
+	for _, peer := range node.Peers {
+		_ = peer.Conn.Close()
+	}
 }
 
 func (node *Node) HandleVersion(peer *Peer, payload []byte) error {
@@ -327,6 +359,7 @@ func (node *Node) SyncBlock(conn net.Conn, wg *sync.WaitGroup) {
 		panic(err)
 	}
 	log.Infof("sync block from [%s]...", conn.RemoteAddr().String())
+	wg.Done()
 }
 
 func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
@@ -342,9 +375,8 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 	//对方节点告诉我他的最新的区块hash值是多少，他想要的最新的区块哈希值是多少（如果是全0）表示他想要我的最新的区块
 	//我对比一下我这边的最新区块哈希值和它的是不是相同，如果相同表示我们拥有相同的区块数据，
 	//如果不同，则我的更旧，我就向它要区块（发送getblocks消息），如果我的更新，我就发送inv消息给他，向它提供最新的区块
-	latestBlockHash := node.GetLatestBlockHash()
-	hashStart := hex.EncodeToString(gp.HashStart[:])
-	if latestBlockHash != hashStart {
+	latestBlockHash := storage.LatestBlockHash()
+	if hex.EncodeToString(latestBlockHash[:]) != hex.EncodeToString(gp.HashStart[:]) {
 		if storage.HasBlockHash(gp.HashStart) { //说明我的区块较对方节点更新
 			// todo:把我的区块发送给他
 			return errors.New("not support sending blocks to remote peers")
@@ -367,13 +399,12 @@ func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
 	}
 
 	return nil
-
 }
 
-// todo: 获取本地最新的区块哈希
-func (node *Node) GetLatestBlockHash() string {
-	return "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
-}
+//
+//func (node *Node) GetLatestBlockHash() string {
+//	return "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
+//}
 
 func (node *Node) HandleGetdata(peer *Peer, payload []byte) error {
 	//主要处理block和tx这两种数据，其他的暂时忽略
@@ -547,5 +578,4 @@ var log *logrus.Logger
 
 func init() {
 	log = logrus.New()
-	//log.
 }

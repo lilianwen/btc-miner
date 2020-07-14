@@ -30,7 +30,6 @@ func startBlockMgr(cfg *common.Config) {
 }
 
 func stopBlockMgr() {
-	close(defaultBlockMgr.newBlock)
 	defaultBlockMgr.stop <- true
 
 	<-defaultBlockMgr.done
@@ -88,8 +87,8 @@ deadloop:
 	_ = bm.DBlatestblock.Close()
 	close(bm.newBlock)
 	close(bm.stop)
-	log.Info("exit db mamager")
-	close(bm.done)
+	log.Info("exit db mamager...")
+	bm.done <- true
 }
 
 //把新区块写入leveldb

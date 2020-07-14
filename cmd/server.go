@@ -19,13 +19,23 @@ import (
 	"btcnetwork/common"
 	"btcnetwork/node"
 	"btcnetwork/storage"
-
-	//"btcnetwork/storage"
+	"errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"os"
+	"os/signal"
 	"strings"
+	"sync/atomic"
+	"syscall"
 
 	"github.com/spf13/cobra"
+)
+
+var (
+	sigs        chan os.Signal
+	stop        chan bool
+	log         *logrus.Logger
+	exitingFlag int32
 )
 
 // serverCmd represents the server command
@@ -38,8 +48,6 @@ var serverCmd = &cobra.Command{
 		startServer(cmd, args)
 	},
 }
-
-var log *logrus.Logger
 
 func init() {
 	log = logrus.New()
@@ -58,10 +66,39 @@ func init() {
 }
 
 func startServer(cmd *cobra.Command, args []string) {
+	sigs = make(chan os.Signal, 1)
+	stop = make(chan bool, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go sigHandler()
 	cfg := loadConfig(cmd, args)
 	storage.Start(cfg) //启动存储服务
-	n := node.New(cfg)
-	n.Start() //启动节点服务
+	node.Start(cfg)
+
+	<-stop
+}
+
+func sigHandler() {
+	sig := <-sigs
+	log.Println("acquire signal:", sig)
+	switch sig {
+	case syscall.SIGINT, syscall.SIGTERM:
+		stopServer()
+	default:
+		panic(errors.New("unsupport signal handle"))
+	}
+}
+
+func stopServer() {
+	//防止多次按下ctrl+C导致多次执行这个函数
+	if atomic.AddInt32(&exitingFlag, 1) != 1 {
+		return
+	}
+	log.Info("stoping server...")
+
+	node.Stop()
+	storage.Stop()
+	close(sigs)
+	close(stop)
 }
 
 func loadConfig(cmd *cobra.Command, args []string) *common.Config {

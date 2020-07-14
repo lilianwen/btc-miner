@@ -12,12 +12,17 @@ var (
 	ErrBlockNotFound = errors.New("block not found")
 	ErrTxNotFound    = errors.New("tx not found")
 	ErrUtxoNotFound  = errors.New("UTXO not found")
+	stop             = false
 )
 
 var log *logrus.Logger
 
 func Store(newBlock *p2p.BlockPayload) {
-	defaultBlockMgr.newBlock <- *newBlock
+	//防止向已经关闭的newBlock通道写入数据
+	if !stop {
+		defaultBlockMgr.newBlock <- *newBlock
+	}
+
 }
 
 func Start(cfg *common.Config) {
@@ -27,6 +32,7 @@ func Start(cfg *common.Config) {
 }
 
 func Stop() {
+	stop = true
 	stopBlockMgr()
 	stopTxMgr()
 	stopUtxoMgr()
