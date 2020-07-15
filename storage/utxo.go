@@ -143,5 +143,5 @@ func Fee(txs []p2p.TxPayload) uint64 {
 		}
 	}
 
-	return outValueSum - inValueSum
+	return inValueSum - outValueSum
 }

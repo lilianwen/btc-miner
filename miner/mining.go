@@ -3,6 +3,7 @@ package miner
 import (
 	"btcnetwork/block"
 	"btcnetwork/common"
+	"btcnetwork/node"
 	"btcnetwork/p2p"
 	"btcnetwork/storage"
 	"btcnetwork/transaction"
@@ -18,7 +19,7 @@ var (
 	ErrNonceNotFound = errors.New("nonce not found")
 )
 
-func Mining() {
+func requireTxs() []p2p.TxPayload {
 	//获取交易
 	txString := "01000000012b98ff080a16eafa8d696822c73a8ae547a5d41c08068aced0b529ac8353e7be000000006a473044022073393b92389248861bd68992303fc4a1ebab6ebc13c74b3b2692c140376fbec50220232983a24688fe5986694cd28879f2bf971d72385621f8987964004196f9541a0121033bee237c0e48aad2cc4411f7c51f424a94f063452ce32457d94be2d91e51f712ffffffff0200e1f505000000001976a91482d55da28ed20143e127b21c4aacc062424f46d388ac2010102401000000160014b7ad1b0d27ce120f9ce148f83a0734ef5f8f8b6700000000"
 	buf, _ := hex.DecodeString(txString)
@@ -27,9 +28,10 @@ func Mining() {
 
 	var txs []p2p.TxPayload
 	txs = append(txs, tx)
+	return txs
+}
 
-	//构建coinbase交易
-	var txids []string
+func createCoinbase(txs []p2p.TxPayload) *p2p.TxPayload {
 	coinbase := p2p.TxPayload{}
 	coinbase.Version = minerConfig.Version
 	coinbase.Marker = nil
@@ -50,10 +52,24 @@ func Mining() {
 	coinbase.WitnessCount = nil
 	coinbase.TxWitnesses = nil
 	coinbase.Locktime = 0
+	return &coinbase
+}
 
-	//构建区块头挖矿
-	txid := coinbase.Txid()
+func Mining() {
+	var (
+		txids    []string
+		txid     [32]byte
+		txs      = requireTxs()
+		coinbase = createCoinbase(txs)
+	)
+
+	txid = coinbase.Txid()
 	txids = append(txids, hex.EncodeToString(txid[:]))
+	for i := 0; i < len(txs); i++ {
+		txid = txs[i].Txid()
+		txids = append(txids, hex.EncodeToString(txid[:]))
+	}
+
 	root, _ := block.ConstructMerkleRoot(txids)
 	buf, err := hex.DecodeString(root.Value)
 	if err != nil {
@@ -74,6 +90,14 @@ func Mining() {
 	} else {
 		header.Nonce = nonce
 		//组建区块，广播给其他节点
+		blk := p2p.BlockPayload{}
+		blk.Header = header
+		blk.TxnCount = common.NewVarInt(uint64(1 + len(txs)))
+		blk.Txns = append(blk.Txns, *coinbase)
+		for i := 0; i < len(txs); i++ {
+			blk.Txns = append(blk.Txns, txs[i])
+		}
+		node.BroadcastNewBlock(&blk)
 
 		//刷新minerConfig,每2016个区块调整难度值，可能需要调整难度值
 		log.Infof("generate block: nonce=%d", nonce)
@@ -82,7 +106,7 @@ func Mining() {
 
 func mine(header *block.Header, startNonce uint32) (uint32, error) {
 	wantTarget := block.Bits2Target(header.Bits)
-	log.Info("start mining with target ", hex.EncodeToString(wantTarget.Bytes()))
+	log.Debug("start mining with target ", hex.EncodeToString(wantTarget.Bytes()))
 	buf := header.Serialize()
 	for i := startNonce; true; i++ {
 		var i2b4 [4]byte

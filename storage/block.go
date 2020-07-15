@@ -97,7 +97,7 @@ deadloop:
 	_ = bm.DBlatestblock.Close()
 	close(bm.newBlock)
 	close(bm.stop)
-	log.Info("exit db mamager...")
+	log.Debug("exit db mamager...")
 	bm.done <- true
 }
 
@@ -118,10 +118,10 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 		}
 	}
 
-	log.Info("blockheader: >>", hex.EncodeToString(newBlock.Header.Serialize()))
-	log.Info("block: >>", hex.EncodeToString(newBlock.Serialize()))
+	log.Debug("blockheader: >>", hex.EncodeToString(newBlock.Header.Serialize()))
+	log.Debug("block: >>", hex.EncodeToString(newBlock.Serialize()))
 	hash := common.Sha256AfterSha256(newBlock.Header.Serialize())
-	log.Info("storage----hash:", hex.EncodeToString(hash[:]))
+	log.Debug("storage----hash:", hex.EncodeToString(hash[:]))
 	err := bm.DBhash2block.Put(hash[:], newBlock.Serialize(), nil)
 	if err != nil {
 		log.Error(err)
@@ -149,7 +149,7 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 		defaultUtxoMgr.tx <- newBlock.Txns[i]
 	}
 
-	log.Info("update block height:", curHeight)
+	log.Debug("update block height:", curHeight)
 	return nil
 }
 

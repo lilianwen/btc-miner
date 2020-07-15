@@ -597,6 +597,24 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 	return nil
 }
 
+func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
+	msg, err := p2p.NewMsg("block", blk.Serialize())
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	for _, peer := range node.Peers {
+		if err = p2p.MustWrite(peer.Conn, msg.Serialize()); err != nil {
+			log.Error(err)
+			continue
+		}
+	}
+}
+
+func BroadcastNewBlock(blk *p2p.BlockPayload) {
+	defaultNode.BroadcastNewBlock(blk)
+}
+
 var log *logrus.Logger
 
 func init() {
