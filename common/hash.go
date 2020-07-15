@@ -10,8 +10,7 @@ import (
 
 func Sha256AfterSha256(data []byte) [32]byte {
 	hash256 := sha256.Sum256(data)
-	hash256 = sha256.Sum256(hash256[:])
-	return hash256
+	return sha256.Sum256(hash256[:])
 }
 
 func Ripemd160AfterSha256(data []byte) ([]byte, error) {

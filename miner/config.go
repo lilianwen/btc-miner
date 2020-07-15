@@ -1,6 +1,9 @@
 package miner
 
-import "encoding/hex"
+import (
+	"btcnetwork/common"
+	"encoding/hex"
+)
 
 type Config struct {
 	Version      uint32
@@ -14,35 +17,41 @@ type Config struct {
 	MinerPubKeyHash [20]byte
 }
 
-var minerConfig = InitConfig()
+var minerConfig *Config
 
 //初始化配置信息要从区块0重放区块头进行计算
-func InitConfig() *Config {
-	cfg := Block0Config()
-	//todo:还有一部分数据从外面输入，如矿工的地址
-	// cfg.MinerPubKeyHash
-	cfg = EvolveConfig(cfg)
-	return cfg
+func InitConfig(cfg *common.Config) *Config {
+	//把地址对应的公钥哈希计算出来
+	addr, err := common.Base58Decode(cfg.MinerAddr)
+	if err != nil {
+		panic(err)
+	}
+	minerCfg := Block1Config()
+	copy(minerCfg.MinerPubKeyHash[:], addr[1:21])
+	minerCfg = EvolveConfig(minerCfg)
+	return minerCfg
 }
 
 // Evolve进化的意思
 // 随着区块高度的增加，配置信息也可能会改变, 如难度值，区块奖励
 func EvolveConfig(cfg *Config) *Config {
 	//todo: 将来实现，暂时不考虑参数变化
+	// 需要根据当前区块高度调整bits值等信息
 	return cfg
 }
 
-//区块0的配置信息，写死在代码里
-func Block0Config() *Config {
+// 区块1的配置信息，根据创世区块相关信息填写
+// 挖矿是从区块1开始的，区块0不用挖矿，区块0是写死在代码里的
+func Block1Config() *Config {
 	cfg := Config{}
-	cfg.Version = 0x01
-	buf, _ := hex.DecodeString("00000000ffff0000000000000000000000000000000000000000000000000000")
+	cfg.Version = common.MinerVersion
+	buf, _ := hex.DecodeString(common.GenesisTarget)
 	copy(cfg.Target[:], buf)
-	buf, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+	buf, _ = hex.DecodeString(common.GenesisBlockHash) //创世区块的哈希值
 	copy(cfg.PreBlockHash[:], buf)
-	cfg.CurrHeight = 0
-	cfg.Bits = 0x1d00ffff
-	cfg.Reward = 50 * 100000000
+	cfg.CurrHeight = common.GenesisBlockHeight + 1
+	cfg.Bits = common.GenesisBlockBits
+	cfg.Reward = common.GenesisBlockReward
 
 	return &cfg
 }

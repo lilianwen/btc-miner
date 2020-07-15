@@ -584,6 +584,7 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 	_ = peer
 	//todo:验证交易是否合法
 	//如果交易合法，则查看本地是否有该交易，如果没有就加入本地交易池
+	log.Debug("tx:", hex.EncodeToString(payload))
 	txHash := common.Sha256AfterSha256(payload)
 
 	//看来还挺难搞哦，这个可能刚刚被打包进区块了，所以交易池没有这个交易，如果就这么再添加到交易池的话，那就是很大的bug了。

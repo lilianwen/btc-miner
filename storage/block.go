@@ -119,6 +119,7 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 	}
 
 	log.Info("blockheader: >>", hex.EncodeToString(newBlock.Header.Serialize()))
+	log.Info("block: >>", hex.EncodeToString(newBlock.Serialize()))
 	hash := common.Sha256AfterSha256(newBlock.Header.Serialize())
 	log.Info("storage----hash:", hex.EncodeToString(hash[:]))
 	err := bm.DBhash2block.Put(hash[:], newBlock.Serialize(), nil)
@@ -142,6 +143,12 @@ func (bm *blockMgr) updateDBs(newBlock *p2p.BlockPayload) error {
 		log.Error(err)
 		return err
 	}
+
+	//UTXO分析
+	for i := uint64(0); i < newBlock.TxnCount.Value; i++ {
+		defaultUtxoMgr.tx <- newBlock.Txns[i]
+	}
+
 	log.Info("update block height:", curHeight)
 	return nil
 }
@@ -157,9 +164,8 @@ func (bm *blockMgr) hash2Height(hash [32]byte) (uint32, error) {
 }
 
 func (bm *blockMgr) genesisBlockHash() [32]byte {
-	genesisBlockHash := "f67ad7695d9b662a72ff3d8edbbb2de0bfa67b13974bb9910d116d5cbd863e68"
 	var buf []byte
-	buf, _ = hex.DecodeString(genesisBlockHash)
+	buf, _ = hex.DecodeString(common.GenesisBlockHash)
 	var hash [32]byte
 	copy(hash[:], buf)
 	return hash

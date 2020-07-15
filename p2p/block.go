@@ -33,3 +33,13 @@ func (bp *BlockPayload) Parse(data []byte) error {
 	}
 	return nil
 }
+
+func (bp *BlockPayload) Serialize() []byte {
+	ret := bp.Header.Serialize()
+	ret = append(ret, bp.TxnCount.Data...)
+	for i := uint64(0); i < bp.TxnCount.Value; i++ {
+		txBytes := bp.Txns[i].Serialize()
+		ret = append(ret, txBytes...)
+	}
+	return ret
+}

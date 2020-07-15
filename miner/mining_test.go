@@ -3,7 +3,11 @@ package miner
 import (
 	"btcnetwork/block"
 	"btcnetwork/common"
+	"btcnetwork/storage"
 	"encoding/hex"
+	"math"
+	"math/big"
+	"reflect"
 	"testing"
 )
 
@@ -167,5 +171,51 @@ func TestMine(t *testing.T) {
 }
 
 func TestMining(t *testing.T) {
+	cfg := &common.Config{}
+	cfg.DataDir = "F:/go/src/btcnetwork/data"
+	cfg.MinerAddr = "SQmHEbXs5qhDt5mqeibX6MJnKpitfz9EHQ"
+	storage.Start(cfg)
+	Start(cfg)
 	Mining()
+	storage.Stop()
+}
+
+func TestInteger2bytes(t *testing.T) {
+	var testcases = []struct {
+		data int32
+		arr  []byte
+	}{
+		{1, []byte{0x1}},
+		{255, []byte{0xff}},
+		{365, []byte{0x6d, 0x01}},
+		{65533, []byte{0xfd, 0xff}},
+		{38557882, []byte{0xba, 0x58, 0x4c, 0x02}},
+		{616926126, []byte{0xae, 0x8b, 0xc5, 0x24}},
+	}
+
+	for _, oneCase := range testcases {
+		buf := Integer2bytes(oneCase.data)
+		if !reflect.DeepEqual(buf, oneCase.arr) {
+			t.Error("wrong convert")
+			t.Error("data:", oneCase.data)
+			t.Errorf("want:%v,get:%v", oneCase.arr, buf)
+			return
+		}
+	}
+}
+
+func TestBigIn(t *testing.T) {
+	var data [8]byte
+	data[7] = 0x01
+	bigNum := new(big.Int).SetBytes(data[:])
+	t.Log(bigNum.Uint64())
+	t.Log(hex.EncodeToString(bigNum.Bytes()))
+}
+
+func TestLoop(t *testing.T) {
+	var i uint32
+	for i = uint32(0); i != math.MaxUint32; i++ {
+		//common.Sha256AfterSha256()
+	}
+	t.Log(i)
 }

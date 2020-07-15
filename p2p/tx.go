@@ -2,6 +2,8 @@ package p2p
 
 import (
 	"btcnetwork/common"
+	"reflect"
+
 	//"btcnetwork/storage"
 	"encoding/binary"
 	"encoding/hex"
@@ -151,6 +153,11 @@ type TxPayload struct {
 	Locktime     uint32
 }
 
+func (txp *TxPayload) CoinbaseTx() bool {
+	var zeroHash [32]byte
+	return reflect.DeepEqual(txp.Txins[0].PreOut.Hash[:], zeroHash[:])
+}
+
 func (txp *TxPayload) TxHash() [32]byte {
 	var i2b4 [4]byte
 	var ret []byte
@@ -291,4 +298,36 @@ func (txp *TxPayload) Parse(data []byte) error {
 	}
 	txp.Locktime = binary.LittleEndian.Uint32(data[start : start+4])
 	return nil
+}
+
+func (txp *TxPayload) Serialize() []byte {
+	var (
+		ret  []byte
+		i2b4 [4]byte
+	)
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Version)
+	ret = append(ret, i2b4[:]...)
+	ret = append(ret, txp.Marker...)
+	ret = append(ret, txp.Flag...)
+	ret = append(ret, txp.TxinCount.Data...)
+	for i := uint64(0); i < txp.TxinCount.Value; i++ {
+		txinBytes := txp.Txins[i].Serialize()
+		ret = append(ret, txinBytes...)
+	}
+	ret = append(ret, txp.TxoutCount.Data...)
+	for i := uint64(0); i < txp.TxoutCount.Value; i++ {
+		txoutBytes := txp.TxOuts[i].Serialize()
+		ret = append(ret, txoutBytes...)
+	}
+	if len(txp.WitnessCount) != 0 {
+		ret = append(ret, txp.WitnessCount[0].Data...)
+		for i := uint64(0); i < txp.WitnessCount[0].Value; i++ {
+			witnessBytes := txp.TxWitnesses[i].Serialize()
+			ret = append(ret, witnessBytes...)
+		}
+	}
+	binary.LittleEndian.PutUint32(i2b4[:], txp.Locktime)
+	ret = append(ret, i2b4[:]...)
+
+	return ret
 }

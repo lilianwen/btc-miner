@@ -11,4 +11,5 @@ type Config struct {
 	RemotePeers      []string
 	DnsSeed          []string
 	DataDir          string
+	MinerAddr        string
 }

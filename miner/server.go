@@ -1,11 +1,14 @@
 package miner
 
-import "github.com/sirupsen/logrus"
+import (
+	"btcnetwork/common"
+	"github.com/sirupsen/logrus"
+)
 
 var log *logrus.Logger
 
-func Start() {
-	InitConfig()
+func Start(cfg *common.Config) {
+	minerConfig = InitConfig(cfg)
 
 }
 
