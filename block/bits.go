@@ -14,12 +14,7 @@ func Bits2Target(bits uint32) *big.Int {
 	power = (power-3)*8
 	var target = big.NewInt(1)
 	target = target.Lsh(target, uint(power))
-	target = target.Mul(target, big.NewInt(int64(factor)))
-	if len(target.Bytes()) > 32 {//修复计算出来的target值过大，超出32字节长度的bug
-		buf := target.Bytes()
-		target.SetBytes(buf[:32])
-	}
-	return target
+	return target.Mul(target, big.NewInt(int64(factor)))
 }
 
 func BigIntTo256Must(target *big.Int) []byte {
