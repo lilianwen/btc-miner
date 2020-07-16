@@ -12,4 +12,8 @@ type Config struct {
 	DnsSeed          []string
 	DataDir          string
 	MinerAddr        string
+	MinerBanner      string
+	MineEmptyBlock   bool
+	MineTimeval      int
+	FixedTxsInBlock  int
 }

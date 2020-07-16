@@ -16,13 +16,14 @@ var (
 )
 
 type blockMgr struct {
-	stop          chan bool
-	done          chan bool
-	newBlock      chan p2p.BlockPayload
-	DBhash2block  *leveldb.DB
-	DBhash2height *leveldb.DB
-	DBheight2hash *leveldb.DB
-	DBlatestblock *leveldb.DB
+	stop           chan bool
+	done           chan bool
+	newBlock       chan p2p.BlockPayload
+	storeBlockDone chan bool
+	DBhash2block   *leveldb.DB
+	DBhash2height  *leveldb.DB
+	DBheight2hash  *leveldb.DB
+	DBlatestblock  *leveldb.DB
 }
 
 var defaultBlockMgr *blockMgr
@@ -43,6 +44,7 @@ func newBlockMgr(cfg *common.Config) *blockMgr {
 	s := blockMgr{}
 	s.stop = make(chan bool, 1)
 	s.done = make(chan bool, 1)
+	s.storeBlockDone = make(chan bool, 1)
 	s.newBlock = make(chan p2p.BlockPayload, 500) //todo:仔细考量一下这个数字该如何定
 
 	var err error
@@ -88,6 +90,9 @@ deadloop:
 				log.Error(err)
 				break deadloop
 			}
+			if len(bm.storeBlockDone) == 0 {
+				bm.storeBlockDone <- true
+			}
 			log.Info("update a block done.")
 		}
 	}
@@ -97,6 +102,7 @@ deadloop:
 	_ = bm.DBlatestblock.Close()
 	close(bm.newBlock)
 	close(bm.stop)
+	close(bm.storeBlockDone)
 	log.Debug("exit db mamager...")
 	bm.done <- true
 }

@@ -305,6 +305,28 @@ func (node *Node) HandleVerack(peer *Peer, payload []byte) error {
 	return nil
 }
 
+func (node *Node) removeTxsInBlock(blk *p2p.BlockPayload) []string {
+	var hashes []string
+	for i := range blk.Txns {
+		txHash := blk.Txns[i].TxHash()
+		//删除mempool中的交易
+		node.mu.Lock()
+		if _, ok := node.txPool[txHash]; ok {
+			delete(node.txPool, txHash)
+		}
+		node.mu.Unlock()
+
+		//strHash := hex.EncodeToString(common.ReverseBytes(txHash[:]))
+		log.Debug("tx[%d].txhash=%s, size=%d", i, hex.EncodeToString(txHash[:]), blk.Txns[i].Len())
+		txid := blk.Txns[i].Txid()
+		strID := hex.EncodeToString(common.ReverseBytes(txid[:]))
+		log.Debug("tx[%d].txid=%s", i, strID)
+		hashes = append(hashes, strID)
+
+	}
+	return hashes
+}
+
 func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	log.Infof("receive block data from [%s]", peer.Addr)
 	if node.isSyncBlock {
@@ -326,27 +348,10 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	log.Debug("block merkle root hash:", hex.EncodeToString(recvBlock.MerkleRootHash[:]))
 	log.Debug("pre block hash:", hex.EncodeToString(recvBlock.PreHash[:]))
 	//处理区块里的交易数据
+	txids := node.removeTxsInBlock(&recvBlock)
 
-	var hashes []string
-	for i := range recvBlock.Txns {
-		txHash := recvBlock.Txns[i].TxHash()
-		//删除mempool中的交易
-		node.mu.Lock()
-		if _, ok := node.txPool[txHash]; ok {
-			delete(node.txPool, txHash)
-		}
-		node.mu.Unlock()
-
-		//strHash := hex.EncodeToString(common.ReverseBytes(txHash[:]))
-		log.Debug("tx[%d].txhash=%s, size=%d", i, hex.EncodeToString(txHash[:]), recvBlock.Txns[i].Len())
-		txid := recvBlock.Txns[i].Txid()
-		strID := hex.EncodeToString(common.ReverseBytes(txid[:]))
-		log.Debug("tx[%d].txid=%s", i, strID)
-		hashes = append(hashes, strID)
-
-	}
 	//构建默克尔树验证区块头的默克尔根值
-	root, err := block.ConstructMerkleRoot(hashes) //这里算出来的是给人类看的逆序的merkle根
+	root, err := block.ConstructMerkleRoot(txids) //这里算出来的是给人类看的逆序的merkle根
 	var merkleHashCopy [32]byte
 	copy(merkleHashCopy[:], recvBlock.MerkleRootHash[:])
 	wantMerkleRootHash := hex.EncodeToString(common.ReverseBytes(merkleHashCopy[:]))
@@ -613,7 +618,9 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 
 func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
 	//把新的区块存入本地数据库，其实应该先存到内存，这样更快，这样可以以更快的速度广播新区块给相连的节点
-	storage.Store(blk)
+	storage.StoreSync(blk) //这里必须使用同步存储，否则可能导致后面响应对方节点getdata的时候找不到这个block的bug
+	//删除本地mempool中与区块里重合的tx
+	node.removeTxsInBlock(blk)
 
 	//然后发inv消息给相连的节点询问他们是否需要这个最新的区块
 	invpl := p2p.InvPayload{}
@@ -636,12 +643,15 @@ func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
 
 func (node *Node) FetchTx(n uint32) []p2p.TxPayload {
 	if len(node.txPool) == 0 {
-		log.Error("tx mempool is empty")
+		log.Debug("tx mempool is empty")
 		return nil
 	}
 	var txs []p2p.TxPayload
 	var count = uint32(0)
 	for _, txInBytes := range node.txPool {
+		if count >= n { //放在for循环开头，解决n等于0的时候仍然获取交易的bug
+			return txs
+		}
 		tx := p2p.TxPayload{}
 		err := tx.Parse(txInBytes)
 		if err != nil {
@@ -650,9 +660,6 @@ func (node *Node) FetchTx(n uint32) []p2p.TxPayload {
 		}
 		txs = append(txs, tx)
 		count++
-		if count >= n {
-			return txs
-		}
 	}
 	return txs
 }

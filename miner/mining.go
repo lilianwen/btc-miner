@@ -40,6 +40,7 @@ deadloop:
 				continue
 			}
 			minerConfig.state = StateAuto
+			wg.Add(1)
 			go autoMine(&wg)
 		case common.StopMine:
 			minerConfig.state = StateStop
@@ -53,21 +54,9 @@ deadloop:
 func autoMine(wg *sync.WaitGroup) {
 	for minerConfig.state == StateAuto {
 		mineOneBlock()
+		time.Sleep(time.Duration(minerConfig.MineTimeval) * time.Second)
 	}
 	wg.Done()
-}
-
-func requireTxs() []p2p.TxPayload {
-	//获取交易
-	txString := "01000000012b98ff080a16eafa8d696822c73a8ae547a5d41c08068aced0b529ac8353e7be000000006a473044022073393b92389248861bd68992303fc4a1ebab6ebc13c74b3b2692c140376fbec50220232983a24688fe5986694cd28879f2bf971d72385621f8987964004196f9541a0121033bee237c0e48aad2cc4411f7c51f424a94f063452ce32457d94be2d91e51f712ffffffff0200e1f505000000001976a91482d55da28ed20143e127b21c4aacc062424f46d388ac2010102401000000160014b7ad1b0d27ce120f9ce148f83a0734ef5f8f8b6700000000"
-
-	buf, _ := hex.DecodeString(txString)
-	tx := p2p.TxPayload{}
-	_ = tx.Parse(buf)
-
-	var txs []p2p.TxPayload
-	txs = append(txs, tx)
-	return txs
 }
 
 func createCoinbaseSigScript(height, extranonce uint64, banner string) []byte {
@@ -110,10 +99,8 @@ func createCoinbase(txs []p2p.TxPayload) *p2p.TxPayload {
 	input := p2p.TxInput{}
 	input.PreOut = p2p.NewCoinPreOutput()
 	height := uint64(storage.LatestBlockHeight()) + uint64(1)
-	//input.SigScript = []byte{0x02, 0x8a, 0x00, 0x08, 0x17, 0x21, 0xf2, 0xde, 0x15, 0x75, 0xae, 0x92, 0x0b, 0x2f, 0x50, 0x32, 0x53, 0x48, 0x2f, 0x62, 0x74, 0x63, 0x64, 0x32} //先写死测试一下
-	//input.SigScript[1] = byte(height)//临时权宜之计
 	extraNonce, _ := rand.Prime(rand.Reader, 63) //这样得到的extraNonce肯定是正数
-	input.SigScript = createCoinbaseSigScript(height, extraNonce.Uint64(), Banner)
+	input.SigScript = createCoinbaseSigScript(height, extraNonce.Uint64(), minerConfig.MinerBanner)
 	input.ScriptLen = common.NewVarInt(uint64(len(input.SigScript)))
 	input.Sequence = 0xffffffff
 	coinbase.Txins = append(coinbase.Txins, input)
@@ -131,11 +118,16 @@ func createCoinbase(txs []p2p.TxPayload) *p2p.TxPayload {
 
 func mineOneBlock() {
 	var (
-		txids    []string
-		txid     [32]byte
-		txs      = node.FetchTx(1) //暂时只提取一个交易进行打包
-		coinbase = createCoinbase(txs)
+		txids []string
+		txid  [32]byte
 	)
+	txs := node.FetchTx(uint32(minerConfig.FixedTxsInBlock)) //暂时只提取一个交易进行打包
+	if txs == nil {
+		if !minerConfig.MineEmptyBlock {
+			return
+		}
+	}
+	coinbase := createCoinbase(txs)
 
 	txid = coinbase.Txid()
 	txids = append(txids, hex.EncodeToString(common.ReverseBytes(txid[:])))

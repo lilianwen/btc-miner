@@ -14,24 +14,23 @@ const (
 )
 
 type Config struct {
-	Version    uint32
-	Target     [32]byte
-	Bits       uint32
-	CurrHeight uint32
+	Version uint32
+	Target  [32]byte
+	Bits    uint32
 	//区块容量上限
 	//区块奖励
 	Reward          uint64
 	MinerPubKeyHash [20]byte
+	MineEmptyBlock  bool
+	MineTimeval     int
+	MinerBanner     string
+	FixedTxsInBlock int
 	state           MiningState
 }
 
 var (
 	minerConfig *Config
-	//MineOneBlock chan bool
-	//MineAuto chan bool
-
-	minerStop chan bool
-	Banner    = "lilianwen Mined"
+	minerStop   chan bool
 )
 
 //初始化配置信息要从区块0重放区块头进行计算
@@ -43,6 +42,10 @@ func InitConfig(cfg *common.Config) *Config {
 	}
 	minerCfg := Block1Config()
 	copy(minerCfg.MinerPubKeyHash[:], addr[1:21])
+	minerCfg.MineEmptyBlock = cfg.MineEmptyBlock
+	minerCfg.MineTimeval = cfg.MineTimeval
+	minerCfg.MinerBanner = cfg.MinerBanner
+	minerCfg.FixedTxsInBlock = cfg.FixedTxsInBlock
 	minerCfg = EvolveConfig(minerCfg)
 	minerCfg.state = StateStop
 	return minerCfg
@@ -63,7 +66,6 @@ func Block1Config() *Config {
 	cfg.Version = common.MinerVersion
 	buf, _ := hex.DecodeString(common.GenesisTarget)
 	copy(cfg.Target[:], buf)
-	cfg.CurrHeight = common.GenesisBlockHeight + 1
 	cfg.Bits = common.GenesisBlockBits
 	cfg.Reward = common.GenesisBlockReward
 

@@ -26,6 +26,10 @@ func Store(newBlock *p2p.BlockPayload) {
 	}
 }
 
+func StoreSync(newBlock *p2p.BlockPayload) error {
+	return defaultBlockMgr.updateDBs(newBlock)
+}
+
 func Start(cfg *common.Config) {
 	startBlockMgr(cfg)
 	startTxMgr(cfg)
