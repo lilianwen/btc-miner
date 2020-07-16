@@ -1,0 +1,24 @@
+{
+  "mine":0,
+  "pingPeriod":90,
+  "checkPongTimeval":5,
+  "maxPeer":8,
+  "maxTxInBlock":100,
+  "peerListen":"0.0.0.0:8333",
+  "rpcListen":"0.0.0.0:8334",
+  "dataDir": "./data",
+  "minerAddr": "SaWGuQw3nK4B6xPC81xZo3gP9jL1DF7dWr",
+  "mineEmptyBlock": 1,
+  "mineTimeval": 5,
+  "minerBanner": "mined by lilianwen",
+  "fixedTxsInBlock": 1,
+  "remotePeers": ["127.0.0.1:9333"],
+  "dnsSeed": [
+    "seed.bitcoin.sipa.be",
+    "dnsseed.bluematt.me",
+    "dnsseed.bitcoin.dashjr.org",
+    "seed.bitcoinstats.com",
+    "seed.bitcoin.jonasschnelli.ch",
+    "seed.btc.petertodd.org,"
+  ]
+}
