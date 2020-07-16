@@ -7,24 +7,32 @@ import (
 )
 
 type ObjectType uint32
+
 const (
 	MsgErr ObjectType = iota
 	MsgTx
 	MsgBlock
 	MsgFilteredBlock
 	MsgCmpctBlock
+	MsgCmpctAndBlock = 0x40000002
 )
 
 func ObjectType2String(ot ObjectType) string {
-	switch ot {
-	case MsgErr: return "err"
-	case MsgTx: return "tx"
-	case MsgBlock: return "block"
-	case MsgFilteredBlock: return "filtered block"
+	switch ot & 0xf {
+	case MsgErr:
+		return "err"
+	case MsgTx:
+		return "tx"
+	case MsgBlock:
+		return "block"
+	case MsgFilteredBlock:
+		return "filtered block"
 	case MsgCmpctBlock:
 		return "compct block"
+	case MsgCmpctAndBlock:
+		return "compct and block"
 	default:
-		return "unknow type:"+strconv.Itoa(int(ot))
+		return "unknow type:" + strconv.Itoa(int(ot))
 	}
 
 	//return ""
@@ -35,14 +43,14 @@ type InvVector struct {
 	Hash [32]byte
 }
 
-func NewInvVector(t ObjectType, hash []byte) *InvVector{
+func NewInvVector(t ObjectType, hash []byte) *InvVector {
 	iv := InvVector{}
 	iv.Type = t
 	copy(iv.Hash[:], hash[:12])
 	return &iv
 }
 
-func (iv *InvVector)Serialize() []byte {
+func (iv *InvVector) Serialize() []byte {
 	var buf []byte
 	var uint32Bytes [4]byte
 	binary.LittleEndian.PutUint32(uint32Bytes[:], uint32(iv.Type))
@@ -51,7 +59,7 @@ func (iv *InvVector)Serialize() []byte {
 	return buf
 }
 
-func (iv *InvVector)Parse(data []byte) error {
+func (iv *InvVector) Parse(data []byte) error {
 	if len(data) < iv.Len() {
 		return errors.New("data is too short")
 	}
@@ -60,6 +68,6 @@ func (iv *InvVector)Parse(data []byte) error {
 	return nil
 }
 
-func (iv *InvVector)Len() int {
+func (iv *InvVector) Len() int {
 	return 36
 }

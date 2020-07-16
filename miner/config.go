@@ -5,19 +5,34 @@ import (
 	"encoding/hex"
 )
 
+type MiningState uint32
+
+const (
+	StateStop     = MiningState(0)
+	StateOneBlock = MiningState(1)
+	StateAuto     = MiningState(2)
+)
+
 type Config struct {
-	Version      uint32
-	Target       [32]byte
-	Bits         uint32
-	CurrHeight   uint32
-	PreBlockHash [32]byte
+	Version    uint32
+	Target     [32]byte
+	Bits       uint32
+	CurrHeight uint32
 	//区块容量上限
 	//区块奖励
 	Reward          uint64
 	MinerPubKeyHash [20]byte
+	state           MiningState
 }
 
-var minerConfig *Config
+var (
+	minerConfig *Config
+	//MineOneBlock chan bool
+	//MineAuto chan bool
+
+	minerStop chan bool
+	Banner    = "lilianwen Mined"
+)
 
 //初始化配置信息要从区块0重放区块头进行计算
 func InitConfig(cfg *common.Config) *Config {
@@ -29,6 +44,7 @@ func InitConfig(cfg *common.Config) *Config {
 	minerCfg := Block1Config()
 	copy(minerCfg.MinerPubKeyHash[:], addr[1:21])
 	minerCfg = EvolveConfig(minerCfg)
+	minerCfg.state = StateStop
 	return minerCfg
 }
 
@@ -47,8 +63,6 @@ func Block1Config() *Config {
 	cfg.Version = common.MinerVersion
 	buf, _ := hex.DecodeString(common.GenesisTarget)
 	copy(cfg.Target[:], buf)
-	buf, _ = hex.DecodeString(common.GenesisBlockHash) //创世区块的哈希值
-	copy(cfg.PreBlockHash[:], buf)
 	cfg.CurrHeight = common.GenesisBlockHeight + 1
 	cfg.Bits = common.GenesisBlockBits
 	cfg.Reward = common.GenesisBlockReward

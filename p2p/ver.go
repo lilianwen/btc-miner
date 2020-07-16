@@ -10,9 +10,19 @@ import (
 	"time"
 )
 
+type NodeService uint64
+
+const (
+	NodeNetwork        = NodeService(1)
+	NodeGetUtxo        = NodeService(2)
+	NodeBloom          = NodeService(4)
+	NodeWitness        = NodeService(8)
+	NodeNetworkLimited = NodeService(1024)
+)
+
 type VersionPayload struct {
 	Version     int32
-	Services    uint64
+	Services    NodeService
 	Timestamp   int64
 	AddrRecv    NetAddr
 	AddrFrom    NetAddr
@@ -25,7 +35,7 @@ type VersionPayload struct {
 func (vp *VersionPayload) Parse(data []byte) {
 	//参数校验，我靠，这怎么校验？
 	vp.Version = int32(binary.LittleEndian.Uint32(data[:4]))
-	vp.Services = binary.LittleEndian.Uint64(data[4:12])
+	vp.Services = NodeService(binary.LittleEndian.Uint64(data[4:12]))
 	vp.Timestamp = int64(binary.LittleEndian.Uint64(data[12:20]))
 	vp.AddrRecv.Parse(data[20:46])
 	vp.AddrFrom.Parse(data[46:72])
@@ -42,7 +52,7 @@ func (vp *VersionPayload) Serialize() []byte {
 	var buf []byte
 	binary.LittleEndian.PutUint32(uint32Bytes[:], uint32(vp.Version))
 	data = append(data, uint32Bytes[:]...)
-	binary.LittleEndian.PutUint64(uint64Bytes[:], vp.Services)
+	binary.LittleEndian.PutUint64(uint64Bytes[:], uint64(vp.Services))
 	data = append(data, uint64Bytes[:]...)
 	binary.LittleEndian.PutUint64(uint64Bytes[:], uint64(vp.Timestamp))
 	data = append(data, uint64Bytes[:]...)
@@ -69,10 +79,10 @@ func NewVersionPayloadUncheck(ipAddr string, port uint16) *VersionPayload {
 	//参数校验
 	var vp = VersionPayload{}
 	vp.Version = 70002
-	vp.Services = 1
+	vp.Services = NodeNetwork | NodeWitness
 	vp.Timestamp = time.Now().Unix()
-	vp.AddrFrom = NewNetAddr(0, vp.Services, "127.0.0.1", 8333)
-	vp.AddrRecv = NewNetAddr(0, vp.Services, ipAddr, port)
+	vp.AddrFrom = NewNetAddr(0, uint64(vp.Services), "127.0.0.1", 8333)
+	vp.AddrRecv = NewNetAddr(0, uint64(vp.Services), ipAddr, port)
 	vp.Nonce = rand.Uint64()
 
 	vp.UserAgent = NewSubVersion()

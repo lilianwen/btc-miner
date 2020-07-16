@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"btcnetwork/common"
+	"btcnetwork/miner"
 	"btcnetwork/node"
 	"btcnetwork/storage"
 	"errors"
@@ -75,6 +76,9 @@ func startServer(cmd *cobra.Command, args []string) {
 	storage.Start(cfg) //启动存储服务
 	node.Start(cfg)
 
+	//启动挖矿服务
+	miner.Start(cfg)
+
 	<-stop
 }
 
@@ -96,6 +100,7 @@ func stopServer() {
 	}
 	log.Info("stoping server...")
 
+	miner.Stop()
 	node.Stop()
 	storage.Stop()
 	close(sigs)

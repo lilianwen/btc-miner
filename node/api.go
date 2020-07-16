@@ -1,6 +1,7 @@
 package node
 
 import (
+	"btcnetwork/common"
 	"btcnetwork/storage"
 	"encoding/hex"
 	"encoding/json"
@@ -42,4 +43,19 @@ func (node *Node) apiLatest(w http.ResponseWriter, r *http.Request) {
 	if _, err = w.Write(buf); err != nil {
 		log.Errorln(err)
 	}
+}
+
+// 挖一个区块
+func (node *Node) apiMineOne(w http.ResponseWriter, r *http.Request) {
+	common.MinerCmd <- common.MineOneTime
+}
+
+// 不停地自动挖矿
+func (node *Node) apiAutoMine(w http.ResponseWriter, r *http.Request) {
+	common.MinerCmd <- common.AutoMine
+}
+
+// 停止挖矿
+func (node *Node) apiStopMine(w http.ResponseWriter, r *http.Request) {
+	common.MinerCmd <- common.StopMine
 }

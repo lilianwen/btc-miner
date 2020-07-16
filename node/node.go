@@ -154,6 +154,7 @@ func newNode(cfg *common.Config) *Node {
 		"inv":       (*Node).HandleInv,
 		"block":     (*Node).HandleBlock,
 		"tx":        (*Node).HandleTx,
+		"getdata":   (*Node).HandleGetdata,
 	}
 	var peers = make(map[string]Peer)
 	var txpool = make(map[[32]byte][]byte)
@@ -444,15 +445,28 @@ func (node *Node) HandleGetdata(peer *Peer, payload []byte) error {
 	for i := uint64(0); i < ivp.Count.Value; i++ {
 		switch ivp.Inventory[i].Type {
 		case common.MsgTx:
-			{
-				//todo:发送tx消息给对方
+			//todo:发送tx消息给对方
 
-			}
+		case common.MsgCmpctAndBlock:
+			fallthrough
 		case common.MsgBlock:
-			{
-				//todo:发送block消息给对方
-
+			blk, err := storage.BlockFromHash(ivp.Inventory[i].Hash)
+			if err != nil {
+				// 发送reject消息
+				log.Error(err)
+				return err
 			}
+			msg, err := p2p.NewMsg("block", blk.Serialize())
+			if err != nil {
+				// 发送 reject消息
+				log.Error(err)
+				return err
+			}
+			if err = p2p.MustWrite(peer.Conn, msg.Serialize()); err != nil {
+				log.Error(err)
+				return err
+			}
+
 		case common.MsgFilteredBlock:
 			fallthrough
 		case common.MsgCmpctBlock:
@@ -598,21 +612,57 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 }
 
 func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
-	msg, err := p2p.NewMsg("block", blk.Serialize())
+	//把新的区块存入本地数据库，其实应该先存到内存，这样更快，这样可以以更快的速度广播新区块给相连的节点
+	storage.Store(blk)
+
+	//然后发inv消息给相连的节点询问他们是否需要这个最新的区块
+	invpl := p2p.InvPayload{}
+	invpl.Count = common.NewVarInt(uint64(1))
+	blockhash := common.Sha256AfterSha256(blk.Header.Serialize())
+	invpl.Inventory = append(invpl.Inventory, common.InvVector{common.MsgBlock, blockhash})
+	invMsg, err := p2p.NewMsg("inv", invpl.Serialize())
 	if err != nil {
 		log.Error(err)
 		return
 	}
+
 	for _, peer := range node.Peers {
-		if err = p2p.MustWrite(peer.Conn, msg.Serialize()); err != nil {
+		if err = p2p.MustWrite(peer.Conn, invMsg.Serialize()); err != nil {
 			log.Error(err)
 			continue
 		}
 	}
 }
 
+func (node *Node) FetchTx(n uint32) []p2p.TxPayload {
+	if len(node.txPool) == 0 {
+		log.Error("tx mempool is empty")
+		return nil
+	}
+	var txs []p2p.TxPayload
+	var count = uint32(0)
+	for _, txInBytes := range node.txPool {
+		tx := p2p.TxPayload{}
+		err := tx.Parse(txInBytes)
+		if err != nil {
+			log.Error(err)
+			return nil
+		}
+		txs = append(txs, tx)
+		count++
+		if count >= n {
+			return txs
+		}
+	}
+	return txs
+}
+
 func BroadcastNewBlock(blk *p2p.BlockPayload) {
 	defaultNode.BroadcastNewBlock(blk)
+}
+
+func FetchTx(n uint32) []p2p.TxPayload {
+	return defaultNode.FetchTx(n)
 }
 
 var log *logrus.Logger

@@ -4,15 +4,17 @@ import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
 	"encoding/binary"
+	"encoding/hex"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	ErrBlockNotFound = errors.New("block not found")
-	ErrTxNotFound    = errors.New("tx not found")
-	ErrUtxoNotFound  = errors.New("UTXO not found")
-	stop             = false
+	ErrBlockNotFound          = errors.New("block not found")
+	ErrBlockUnserializeFailed = errors.New("block unserialize failed")
+	ErrTxNotFound             = errors.New("tx not found")
+	ErrUtxoNotFound           = errors.New("UTXO not found")
+	stop                      = false
 )
 
 var log *logrus.Logger
@@ -37,9 +39,19 @@ func Stop() {
 	stopUtxoMgr()
 }
 
-// todo:根据区块哈希找出区块数据
 func BlockFromHash(hash [32]byte) (*p2p.BlockPayload, error) {
-	return nil, ErrBlockNotFound
+	log.Debug(hex.EncodeToString(hash[:]))
+	buf, err := defaultBlockMgr.DBhash2block.Get(hash[:], nil)
+	if err != nil {
+		log.Error(err)
+		return nil, ErrBlockNotFound
+	}
+	blk := p2p.BlockPayload{}
+	if err = blk.Parse(buf); err != nil {
+		log.Error(err)
+		return nil, ErrBlockUnserializeFailed
+	}
+	return &blk, nil
 }
 
 func HasBlockHash(hash [32]byte) bool {
