@@ -1,9 +1,5 @@
 package common
 
-import "github.com/sirupsen/logrus"
-
-var LogLevel = logrus.DebugLevel
-
 type MineCmd uint32
 
 const (

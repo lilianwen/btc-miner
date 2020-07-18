@@ -7,14 +7,12 @@ import (
 	"btcnetwork/storage"
 	"encoding/hex"
 	"errors"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
-	//"internal/poll"
 )
 
 const (
@@ -27,12 +25,11 @@ type Node struct {
 	Cfg            common.Config                                              //从配置文件读出来以后就不会再被改变了
 	p2pHandlers    map[string]func(*Node, *Peer, []byte) error                //存储各个p2p消息的处理函数
 	apiHandlers    map[string]func(*Node, http.ResponseWriter, *http.Request) //存储各个api消息的处理函数
-	Peers          map[string]Peer                                            //按照地址映射远程节点的信息
+	Peers          sync.Map                                                   //按照地址映射远程节点的信息
 	PeerAmount     uint32
-	mu             sync.RWMutex
 	PingTicker     *time.Ticker
 	StopPing       chan bool
-	txPool         map[[32]byte][]byte
+	txPool         sync.Map
 	syncBlocksDone chan bool
 	syncingBlocks  chan bool
 	isSyncBlock    bool
@@ -56,22 +53,24 @@ func Stop() {
 
 func (node *Node) Start() {
 	var wg sync.WaitGroup
-	//todo:先找到本地的区块数据和交易数据，然后回放到内存中去
 
 	//主动连接P2P节点
-	for addr, peer := range node.Peers {
+	node.Peers.Range(func(key, value interface{}) bool {
+		addr := key.(string)
+		peer := value.(Peer)
+
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
-			log.Errorln(err.Error())
-			continue
+			log.Error(err.Error())
+			return false
 		}
 		//开始握手协议
 		//既然前面能够拨号成功，那么ip和端口肯定是合法的，就不用检查错误了
 		msg, _ := p2p.NewVerMsg(addr)
 
 		if err = node.sendMsg(conn, msg.Serialize()); err != nil {
-			log.Errorln(err.Error())
-			continue
+			log.Error(err.Error())
+			return false
 		}
 		peer.Conn = conn
 		peer.Addr = addr
@@ -108,7 +107,9 @@ func (node *Node) Start() {
 			wg.Add(1)
 			go node.StartApiService(&wg)
 		}
-	}
+
+		return true
+	})
 
 	go node.listenPeers(&wg)
 
@@ -120,18 +121,20 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 
 	listener, err := net.Listen("tcp", node.Cfg.PeerListen)
 	if err != nil {
-		log.Errorln(err)
+		log.Error(err)
 		return
 	}
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Errorln(err)
+			log.Error(err)
 			continue
 		}
 		//节点数量有个上限，不能一直在这里接收
 		if atomic.LoadUint32(&node.PeerAmount) >= uint32(node.Cfg.MaxPeer) {
-			conn.Close()
+			if err = conn.Close(); err != nil {
+				log.Error(err)
+			}
 			continue
 		}
 
@@ -156,20 +159,18 @@ func newNode(cfg *common.Config) *Node {
 		"tx":        (*Node).HandleTx,
 		"getdata":   (*Node).HandleGetdata,
 	}
-	var peers = make(map[string]Peer)
-	var txpool = make(map[[32]byte][]byte)
+
 	var syncBlocksDone = make(chan bool, 1)
+	var peers sync.Map
 	for _, addr := range cfg.RemotePeers {
-		peers[addr] = NewPeer()
+		peers.Store(addr, NewPeer())
 	}
-	return &Node{Cfg: *cfg, Peers: peers, p2pHandlers: handlers, txPool: txpool, syncBlocksDone: syncBlocksDone, isSyncBlock: false, exit: false}
+	return &Node{Cfg: *cfg, Peers: peers, p2pHandlers: handlers, syncBlocksDone: syncBlocksDone, isSyncBlock: false, exit: false}
 }
 
 // 新增节点，主要给监听服务和addr消息用
 func (node *Node) AddPeer(p Peer) {
-	node.mu.Lock()
-	node.Peers[p.Addr] = p
-	node.mu.Unlock()
+	node.Peers.Store(p.Addr, p)
 	atomic.AddUint32(&node.PeerAmount, 1)
 }
 
@@ -189,35 +190,21 @@ func (node *Node) sendMsg(conn net.Conn, data []byte) error {
 }
 
 func readMsgHeader(conn net.Conn) (p2p.MsgHeader, error) {
-	var sum = 0
-	var start = 0
-	var buf = make([]byte, p2p.MsgHeaderLen) //
-	for sum < p2p.MsgHeaderLen {
-		//先读取消息头,再读payload
-		n, err := conn.Read(buf[start:]) //万一多读了数据怎么办？
-		if err != nil {
-			return p2p.MsgHeader{}, err
-		}
-		sum += n
-		start = sum
-	}
 	header := p2p.MsgHeader{}
+	var buf = make([]byte, p2p.MsgHeaderLen)
+	if n, err := io.ReadFull(conn, buf); err != nil {
+		log.Errorf("read %d bytes when error(%v) occurs", n, err)
+		return header, err
+	}
 	header.Parse(buf)
 	return header, nil
 }
 
 func readPayload(conn net.Conn, payloadLen uint32) ([]byte, error) {
-	var sum = 0
-	var start = 0
-	var buf = make([]byte, payloadLen) //
-	for sum < int(payloadLen) {
-		//先读取消息头,再读payload
-		n, err := conn.Read(buf[start:])
-		if err != nil {
-			return nil, err
-		}
-		sum += n
-		start = sum
+	var buf = make([]byte, payloadLen)
+	if n, err := io.ReadFull(conn, buf); err != nil {
+		log.Errorf("read %d bytes when error(%v) occurs", n, err)
+		return buf, err
 	}
 	return buf, nil
 }
@@ -229,7 +216,7 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			if err == io.EOF {
 				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Errorln(err) // todo: 解决ERRO[0006] read tcp 127.0.0.1:57380->127.0.0.1:9333: use of closed network connection
+				log.Error(err) // todo: 解决ERRO[0006] read tcp 127.0.0.1:57380->127.0.0.1:9333: use of closed network connection
 			}
 
 			break
@@ -243,7 +230,7 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			if err == io.EOF {
 				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Errorln(err)
+				log.Error(err)
 			}
 			break
 		}
@@ -253,7 +240,13 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			log.Errorf("not support message(%s) handler", cmd)
 			continue
 		}
-		peer := node.Peers[conn.RemoteAddr().String()]
+		addr := conn.RemoteAddr().String()
+		value, ok := node.Peers.Load(addr)
+		peer := value.(Peer)
+		if !ok {
+			log.Errorf("peer(%s) not exist anymore.", addr)
+			break
+		}
 		if err = handler(node, &peer, payload); err != nil {
 			log.Errorf("handle message(%s) error:%s", cmd, err.Error())
 			break
@@ -261,23 +254,28 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 	}
 
 	//释放资源
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		log.Error(err)
+	}
 	//删除节点
-	node.mu.Lock()
-	delete(node.Peers, conn.RemoteAddr().String())
-	node.mu.Unlock()
+	node.Peers.Delete(conn.RemoteAddr().String())
+
 	wg.Done()
 }
 
 func (node *Node) closePeerCheck() {
-	//close(node.PingTicker)
 	node.PingTicker.Stop()
 }
 
 func (node *Node) disconnetAllPeers() {
-	for _, peer := range node.Peers {
-		_ = peer.Conn.Close()
-	}
+	node.Peers.Range(func(key, value interface{}) bool {
+		_ = key
+		peer := value.(Peer)
+		if err := peer.Conn.Close(); err != nil {
+			log.Error("err")
+		}
+		return true
+	})
 }
 
 func (node *Node) HandleVersion(peer *Peer, payload []byte) error {
@@ -301,7 +299,6 @@ func (node *Node) HandleVerack(peer *Peer, payload []byte) error {
 	if len(peer.HandShakeDone) == 0 {
 		peer.HandShakeDone <- true
 	}
-
 	return nil
 }
 
@@ -310,19 +307,13 @@ func (node *Node) removeTxsInBlock(blk *p2p.BlockPayload) []string {
 	for i := range blk.Txns {
 		txHash := blk.Txns[i].TxHash()
 		//删除mempool中的交易
-		node.mu.Lock()
-		if _, ok := node.txPool[txHash]; ok {
-			delete(node.txPool, txHash)
-		}
-		node.mu.Unlock()
+		node.txPool.Delete(txHash)
 
-		//strHash := hex.EncodeToString(common.ReverseBytes(txHash[:]))
 		log.Debug("tx[%d].txhash=%s, size=%d", i, hex.EncodeToString(txHash[:]), blk.Txns[i].Len())
 		txid := blk.Txns[i].Txid()
 		strID := hex.EncodeToString(common.ReverseBytes(txid[:]))
 		log.Debug("tx[%d].txid=%s", i, strID)
 		hashes = append(hashes, strID)
-
 	}
 	return hashes
 }
@@ -505,7 +496,8 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 				//存储到交易池中去,交易池用什么存？leveldb？rockdb?
 				//查询本地是否有该交易？没有就验证交易，通过验证之后就加入交易池
 				//todo:暂时省去验证交易的功能，直接认为是合法交易，将来再加上
-				if _, ok := node.txPool[hash]; !ok {
+
+				if _, ok := node.txPool.Load(hash); !ok {
 					//本地没有这个tx,发送getdata消息给节点获取交易数据
 					//如果不想知道交易详情，其实是可以不去get交易数据的
 					toGetData = true
@@ -553,25 +545,27 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 //todo:这里需要好好想想，怎样才算是真正的同步成功了呢？
 func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 	//发送mempool消息，接收inv消息
-	node.mu.RLock()
+
 	count := 0
-	for addr, peer := range node.Peers {
+	node.Peers.Range(func(key, value interface{}) bool {
+		addr := key.(string)
+		peer := value.(Peer)
 		msg, err := p2p.NewMempoolMsg()
 		if err != nil {
 			panic(err) //如果连消息都会构造错误那只能panic了
 		}
 		if err = node.sendMsg(peer.Conn, msg.Serialize()); err != nil {
-			log.Errorln(err)
-			continue
+			log.Error(err)
+			return true //虽然出错了，但依然可以进行后面节点的处理
 		}
 		log.Infof("sync memory pool from [%s]", addr)
 
 		count++
 		if count >= MaxSyncPeerCount {
-			break
+			return false
 		}
-	}
-	node.mu.RUnlock()
+		return true
+	})
 	wg.Done()
 }
 
@@ -591,9 +585,7 @@ func (node *Node) HandlePing(peer *Peer, payload []byte) error {
 func (node *Node) HandlePong(peer *Peer, payload []byte) error {
 	//实现心跳机制
 	if len(peer.Alive) == 0 { //可能远程节点发送ping更频繁一些，这里做这个判断防止通道满了再往里写会阻塞
-		node.mu.Lock()
 		peer.Alive <- true
-		node.mu.Unlock()
 	}
 
 	return nil
@@ -608,17 +600,16 @@ func (node *Node) HandleTx(peer *Peer, payload []byte) error {
 
 	//看来还挺难搞哦，这个可能刚刚被打包进区块了，所以交易池没有这个交易，如果就这么再添加到交易池的话，那就是很大的bug了。
 	//要解决这种问题，看来只能把所有区块都同步下来并回，才能确定唯一性。
-	node.mu.Lock()
-	if _, ok := node.txPool[txHash]; !ok { //todo:先暂时这么粗暴的做，这里肯定有bug
-		node.txPool[txHash] = payload
-	}
-	node.mu.Unlock()
+	node.txPool.Store(txHash, payload)
 	return nil
 }
 
 func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
 	//把新的区块存入本地数据库，其实应该先存到内存，这样更快，这样可以以更快的速度广播新区块给相连的节点
-	storage.StoreSync(blk) //这里必须使用同步存储，否则可能导致后面响应对方节点getdata的时候找不到这个block的bug
+	if err := storage.StoreSync(blk); err != nil { //这里必须使用同步存储，否则可能导致后面响应对方节点getdata的时候找不到这个block的bug
+		log.Error(err)
+		return
+	}
 	//删除本地mempool中与区块里重合的tx
 	node.removeTxsInBlock(blk)
 
@@ -633,33 +624,36 @@ func (node *Node) BroadcastNewBlock(blk *p2p.BlockPayload) {
 		return
 	}
 
-	for _, peer := range node.Peers {
+	node.Peers.Range(func(key, value interface{}) bool {
+		peer := value.(Peer)
 		if err = p2p.MustWrite(peer.Conn, invMsg.Serialize()); err != nil {
 			log.Error(err)
-			continue
 		}
-	}
+		return true
+	})
 }
 
 func (node *Node) FetchTx(n uint32) []p2p.TxPayload {
-	if len(node.txPool) == 0 {
-		log.Debug("tx mempool is empty")
-		return nil
-	}
 	var txs []p2p.TxPayload
 	var count = uint32(0)
-	for _, txInBytes := range node.txPool {
+	node.txPool.Range(func(key, value interface{}) bool {
 		if count >= n { //放在for循环开头，解决n等于0的时候仍然获取交易的bug
-			return txs
+			return true
 		}
 		tx := p2p.TxPayload{}
-		err := tx.Parse(txInBytes)
+		err := tx.Parse(value.([]byte))
 		if err != nil {
 			log.Error(err)
-			return nil
+			return false
 		}
 		txs = append(txs, tx)
 		count++
+		return true
+	})
+
+	if txs == nil {
+		log.Info("tx mempool is empty")
+		return nil
 	}
 	return txs
 }
@@ -670,11 +664,4 @@ func BroadcastNewBlock(blk *p2p.BlockPayload) {
 
 func FetchTx(n uint32) []p2p.TxPayload {
 	return defaultNode.FetchTx(n)
-}
-
-var log *logrus.Logger
-
-func init() {
-	log = logrus.New()
-	log.SetLevel(common.LogLevel)
 }

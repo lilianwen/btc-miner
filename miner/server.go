@@ -2,10 +2,7 @@ package miner
 
 import (
 	"btcnetwork/common"
-	"github.com/sirupsen/logrus"
 )
-
-var log *logrus.Logger
 
 func Start(cfg *common.Config) {
 	log.Info("start miner service")
@@ -19,9 +16,4 @@ func Stop() {
 	common.MinerCmd <- common.StopMine
 
 	<-minerStop
-}
-
-func init() {
-	log = logrus.New()
-	log.SetLevel(common.LogLevel)
 }

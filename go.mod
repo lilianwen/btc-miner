@@ -3,7 +3,9 @@ module btcnetwork
 go 1.13
 
 require (
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
+	github.com/jrick/logrotate v1.0.0
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/pkg/errors v0.8.1

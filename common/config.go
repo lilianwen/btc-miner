@@ -11,6 +11,8 @@ type Config struct {
 	RemotePeers      []string
 	DnsSeed          []string
 	DataDir          string
+	LogDir           string
+	LogLevel         string
 	MinerAddr        string
 	MinerBanner      string
 	MineEmptyBlock   bool

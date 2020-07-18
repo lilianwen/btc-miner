@@ -28,7 +28,7 @@ func (invp *InvPayload) Parse(data []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Println("inv count:", invp.Count.Value)
+	log.Debug("inv count:", invp.Count.Value)
 
 	invp.Inventory = make([]common.InvVector, invp.Count.Value) //预先分配，提高性能
 	start := invp.Count.Len()
@@ -37,8 +37,8 @@ func (invp *InvPayload) Parse(data []byte) error {
 		if err := invvect.Parse(data[start:]); err != nil {
 			return err
 		}
-		log.Printf("inv[%d] type:%s", i, common.ObjectType2String(invvect.Type))
-		log.Printf("inv[%d] hash:%s", i, hex.EncodeToString(invvect.Hash[:]))
+		log.Debugf("inv[%d] type:%s", i, common.ObjectType2String(invvect.Type))
+		log.Debugf("inv[%d] hash:%s", i, hex.EncodeToString(invvect.Hash[:]))
 
 		invp.Inventory[i] = invvect
 		start += invvect.Len()

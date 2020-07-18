@@ -189,7 +189,7 @@ func searchNonce(header *block.Header, startNonce uint32) (uint32, error) {
 			break
 		}
 		if i%10000000 == 0 {
-			log.Info("try nonce: ", i)
+			log.Infof("try nonce: ", i)
 		}
 		if minerConfig.state == StateStop { //需要立刻停止挖矿
 			return 0, ErrNonceNotFound

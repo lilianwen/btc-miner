@@ -15,7 +15,7 @@ var (
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Errorln(err)
+		log.Error(err)
 		os.Exit(1)
 	}
 }

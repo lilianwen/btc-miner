@@ -16,20 +16,19 @@ func (node *Node) apiMempool(w http.ResponseWriter, r *http.Request) {
 	//读取当前mempool里的所有交易哈希值
 	var txs []string
 	var count = uint32(0)
-	node.mu.RLock()
-	for txHash := range node.txPool {
-		txs = append(txs, hex.EncodeToString(txHash[:]))
+	node.txPool.Range(func(key, value interface{}) bool {
+		txs = append(txs, hex.EncodeToString(key.([]byte)))
 		count++
-	}
-	node.mu.RUnlock()
+		return true
+	})
 
 	buf, err := json.Marshal(txs)
 	if err != nil {
-		log.Errorln(err)
+		log.Error(err)
 		return
 	}
 	if _, err = w.Write(buf); err != nil {
-		log.Errorln(err)
+		log.Error(err)
 	}
 }
 
@@ -37,11 +36,11 @@ func (node *Node) apiLatest(w http.ResponseWriter, r *http.Request) {
 	latest := storage.LatestBlockHeight()
 	buf, err := json.Marshal(latest)
 	if err != nil {
-		log.Errorln(err)
+		log.Error(err)
 		return
 	}
 	if _, err = w.Write(buf); err != nil {
-		log.Errorln(err)
+		log.Error(err)
 	}
 }
 

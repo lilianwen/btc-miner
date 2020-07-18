@@ -1,9 +1,7 @@
 package p2p
 
 import (
-	"btcnetwork/common"
 	"encoding/binary"
-	"github.com/sirupsen/logrus"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -100,11 +98,4 @@ func NewVerMsg(address string) (*Msg, error) {
 	}
 	payload := NewVersionPayloadUncheck(ip, uint16(port))
 	return NewMsg("version", payload.Serialize())
-}
-
-var log *logrus.Logger
-
-func init() {
-	log = logrus.New()
-	log.SetLevel(common.LogLevel)
 }

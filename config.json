@@ -7,6 +7,8 @@
   "peerListen":"0.0.0.0:8333",
   "rpcListen":"0.0.0.0:8334",
   "dataDir": "./data",
+  "logDir": "./log",
+  "logLevel": "debug",
   "minerAddr": "SaWGuQw3nK4B6xPC81xZo3gP9jL1DF7dWr",
   "mineEmptyBlock": 1,
   "mineTimeval": 5,

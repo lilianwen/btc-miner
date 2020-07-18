@@ -15,17 +15,20 @@ limitations under the License.
 */
 package cmd
 
+import "C"
 import (
 	"btcnetwork/common"
 	"btcnetwork/miner"
 	"btcnetwork/node"
 	"btcnetwork/storage"
-	"errors"
-	"github.com/sirupsen/logrus"
+	"fmt"
+	"github.com/btcsuite/btclog"
 	"github.com/spf13/viper"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 
@@ -33,10 +36,10 @@ import (
 )
 
 var (
-	sigs        chan os.Signal
-	stop        chan bool
-	log         *logrus.Logger
-	exitingFlag int32
+	sigs               chan os.Signal
+	log                btclog.Logger
+	exitingFlag        int32
+	defaultLogFilename = "btcminer.log"
 )
 
 // serverCmd represents the server command
@@ -45,21 +48,19 @@ var serverCmd = &cobra.Command{
 	Short: "service for btc network",
 	Long:  `service for btc network`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infoln("start server.")
-		startServer(cmd, args)
+		cfg := loadConfig(cmd, args)
+		runServer(cfg)
 	},
 }
 
 func init() {
-	log = logrus.New()
-	log.SetLevel(common.LogLevel)
 	rootCmd.AddCommand(serverCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	serverCmd.PersistentFlags().BoolP("mine", "m", false, "mine blocks")
+	//serverCmd.PersistentFlags().BoolP("mine", "m", false, "mine blocks")
 	serverCmd.PersistentFlags().StringP("config", "c", "", "config file for node")
 
 	// Cobra supports local flags which will only run when this command
@@ -67,29 +68,30 @@ func init() {
 	// serverCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func startServer(cmd *cobra.Command, args []string) {
+func runServer(cfg *common.Config) {
+	var wg sync.WaitGroup
+
 	sigs = make(chan os.Signal, 1)
-	stop = make(chan bool, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go sigHandler()
-	cfg := loadConfig(cmd, args)
+	wg.Add(1)
+	go sigHandler(&wg)
+
 	storage.Start(cfg) //启动存储服务
 	node.Start(cfg)
-
-	//启动挖矿服务
 	miner.Start(cfg)
 
-	<-stop
+	wg.Wait()
 }
 
-func sigHandler() {
+func sigHandler(wg *sync.WaitGroup) {
+	defer wg.Done()
 	sig := <-sigs
-	log.Println("acquire signal:", sig)
+	log.Info("acquire signal:", sig)
 	switch sig {
 	case syscall.SIGINT, syscall.SIGTERM:
 		stopServer()
 	default:
-		panic(errors.New("unsupport signal handle"))
+		log.Error("unsupport signal handle:", sig)
 	}
 }
 
@@ -104,7 +106,6 @@ func stopServer() {
 	node.Stop()
 	storage.Stop()
 	close(sigs)
-	close(stop)
 }
 
 func loadConfig(cmd *cobra.Command, args []string) *common.Config {
@@ -122,7 +123,7 @@ func loadConfig(cmd *cobra.Command, args []string) *common.Config {
 	cfgType := s[len(s)-1]
 	viper.SetConfigFile(configFile)
 	viper.SetConfigType(cfgType)
-	log.Info("read data form config file:", configFile)
+	fmt.Println("read data form config file:", configFile)
 	if err = viper.ReadInConfig(); err != nil {
 		panic(err)
 	}
@@ -131,6 +132,10 @@ func loadConfig(cmd *cobra.Command, args []string) *common.Config {
 	if err = viper.Unmarshal(&c); err != nil {
 		panic(err)
 	}
+
+	//初始化日志系统
+	initLogRotator(filepath.Join(c.LogDir, defaultLogFilename))
+	setLogLevels(c.LogLevel)
 
 	return &c
 }

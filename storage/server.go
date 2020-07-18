@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -16,8 +15,6 @@ var (
 	ErrUtxoNotFound           = errors.New("UTXO not found")
 	stop                      = false
 )
-
-var log *logrus.Logger
 
 func Store(newBlock *p2p.BlockPayload) {
 	//防止向已经关闭的newBlock通道写入数据
@@ -118,8 +115,3 @@ func Tx(txid [32]byte) (*p2p.TxPayload, error) {
 //	}
 //	return txout, nil
 //}
-
-func init() {
-	log = logrus.New()
-	log.SetLevel(common.LogLevel)
-}
