@@ -5,19 +5,22 @@ import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
 	"btcnetwork/storage"
+	"context"
 	"encoding/hex"
 	"errors"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 const (
-	MaxSyncPeerCount = 3
-	MaxSyncChanLen   = 3
+	MaxSyncPeerCount      = 3
+	SyncBlockCheckTimeval = 3 * time.Second
+	MaxSyncChanLen        = 3
 )
 
 //需要种子节点列表
@@ -28,32 +31,51 @@ type Node struct {
 	Peers          sync.Map                                                   //按照地址映射远程节点的信息
 	PeerAmount     uint32
 	PingTicker     *time.Ticker
-	StopPing       chan bool
 	txPool         sync.Map
 	syncBlocksDone chan bool
 	syncingBlocks  chan bool
-	isSyncBlock    bool
-	exit           bool
+	listener       net.Listener
 }
 
-var defaultNode *Node
+var (
+	defaultNode *Node
+	ctx context.Context
+	cancel context.CancelFunc
+	wg sync.WaitGroup
+)
 
 func Start(cfg *common.Config) {
+	ctx, cancel = context.WithCancel(context.Background())
 	defaultNode = newNode(cfg) //写成new会和golang内置的new重名
-	go defaultNode.Start()
-}
 
+	go defaultNode.Start(ctx, &wg)
+}
+func isStop() bool {
+	select {
+	case <-ctx.Done():
+		return true
+	default:
+		return false
+	}
+}
 func Stop() {
-	defaultNode.exit = true
-	// 关闭定时检测节点服务
-	defaultNode.closePeerCheck()
+	cancel()
 	// 关闭所有的p2p连接节点
+	_ = defaultNode.listener.Close()
 	defaultNode.disconnetAllPeers()
+	wg.Wait()
 }
 
-func (node *Node) Start() {
-	var wg sync.WaitGroup
+func (node *Node)isSyncBlockDone() bool {
+	select {
+	case <-node.syncBlocksDone:
+		return true
+	default:
+		return false
+	}
+}
 
+func (node *Node) Start(ctx context.Context, wg *sync.WaitGroup) {
 	//主动连接P2P节点
 	node.Peers.Range(func(key, value interface{}) bool {
 		addr := key.(string)
@@ -77,59 +99,64 @@ func (node *Node) Start() {
 		node.AddPeer(peer)
 
 		wg.Add(1)
-		go node.handleMsg(conn, &wg)
+		go node.handleMsg(conn, wg)
 
 		//time.Duration()
 		node.PingTicker = time.NewTicker(time.Duration(node.Cfg.PingPeriod) * time.Second)
-		node.StopPing = make(chan bool)
 		wg.Add(1)
-		go node.PingPeers(&wg)
+		go node.PingPeers(ctx, wg)
 
 		//一定要注意时序，必须要在握手协议完成之后才能进行后续的P2P通信
 		<-peer.HandShakeDone
 		close(peer.HandShakeDone)
-		if !node.exit {
+		if !isStop() {
 			go node.SyncBlock(conn) //暂时只从一个节点同步区块，todo:将来需要扩展成从多个节点同步区块
 			// 等待区块同步完成
 			<-node.syncBlocksDone
-			node.isSyncBlock = false
 			close(node.syncBlocksDone)
 			close(node.syncingBlocks)
 			log.Info("sync block done.")
 		}
 
-		if !node.exit {
+		if !isStop() {
 			wg.Add(1)
-			go node.SyncMempool(&wg)
+			go node.SyncMempool(wg)
 		}
 
-		if !node.exit {
+		if !isStop() {
 			wg.Add(1)
-			go node.StartApiService(&wg)
+			go node.StartApiService(ctx, wg)
 		}
 
 		return true
 	})
 
-	go node.listenPeers(&wg)
-
-	wg.Wait()
+	wg.Add(1)
+	go node.listenPeers(wg)
 }
 
 func (node *Node) listenPeers(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	listener, err := net.Listen("tcp", node.Cfg.PeerListen)
-	if err != nil {
+	var err error
+	if node.listener, err = net.Listen("tcp", node.Cfg.PeerListen); err != nil {
 		log.Error(err)
 		return
 	}
+
 	for {
-		conn, err := listener.Accept()
+		conn, err := node.listener.Accept()
 		if err != nil {
-			log.Error(err)
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				log.Error(err)
+			}
+
+			if isStop() {
+				return
+			}
 			continue
 		}
+
 		//节点数量有个上限，不能一直在这里接收
 		if atomic.LoadUint32(&node.PeerAmount) >= uint32(node.Cfg.MaxPeer) {
 			if err = conn.Close(); err != nil {
@@ -143,6 +170,7 @@ func (node *Node) listenPeers(wg *sync.WaitGroup) {
 		p.Addr = conn.RemoteAddr().String()
 		node.AddPeer(p)
 
+		wg.Add(1)
 		go node.handleMsg(conn, wg)
 	}
 }
@@ -165,7 +193,7 @@ func newNode(cfg *common.Config) *Node {
 	for _, addr := range cfg.RemotePeers {
 		peers.Store(addr, NewPeer())
 	}
-	return &Node{Cfg: *cfg, Peers: peers, p2pHandlers: handlers, syncBlocksDone: syncBlocksDone, isSyncBlock: false, exit: false}
+	return &Node{Cfg: *cfg, Peers: peers, p2pHandlers: handlers, syncBlocksDone: syncBlocksDone}
 }
 
 // 新增节点，主要给监听服务和addr消息用
@@ -192,8 +220,7 @@ func (node *Node) sendMsg(conn net.Conn, data []byte) error {
 func readMsgHeader(conn net.Conn) (p2p.MsgHeader, error) {
 	header := p2p.MsgHeader{}
 	var buf = make([]byte, p2p.MsgHeaderLen)
-	if n, err := io.ReadFull(conn, buf); err != nil {
-		log.Errorf("read %d bytes when error(%v) occurs", n, err)
+	if _, err := io.ReadFull(conn, buf); err != nil {
 		return header, err
 	}
 	header.Parse(buf)
@@ -202,23 +229,24 @@ func readMsgHeader(conn net.Conn) (p2p.MsgHeader, error) {
 
 func readPayload(conn net.Conn, payloadLen uint32) ([]byte, error) {
 	var buf = make([]byte, payloadLen)
-	if n, err := io.ReadFull(conn, buf); err != nil {
-		log.Errorf("read %d bytes when error(%v) occurs", n, err)
+	if _, err := io.ReadFull(conn, buf); err != nil {
 		return buf, err
 	}
 	return buf, nil
 }
 
 func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for {
 		header, err := readMsgHeader(conn)
 		if err != nil {
 			if err == io.EOF {
 				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Error(err) // todo: 解决ERRO[0006] read tcp 127.0.0.1:57380->127.0.0.1:9333: use of closed network connection
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					log.Error(err)
+				}
 			}
-
 			break
 		}
 
@@ -230,7 +258,9 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			if err == io.EOF {
 				log.Infof("remote peer(%s) close connection.", conn.RemoteAddr().String())
 			} else {
-				log.Error(err)
+				if !strings.Contains(err.Error(), "use of closed network connection") {
+					log.Error(err)
+				}
 			}
 			break
 		}
@@ -248,6 +278,9 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 			break
 		}
 		if err = handler(node, &peer, payload); err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				break
+			}
 			log.Errorf("handle message(%s) error:%s", cmd, err.Error())
 			break
 		}
@@ -255,16 +288,12 @@ func (node *Node) handleMsg(conn net.Conn, wg *sync.WaitGroup) {
 
 	//释放资源
 	if err := conn.Close(); err != nil {
-		log.Error(err)
+		if !strings.Contains(err.Error(), "use of closed network connection") {
+			log.Error(err)
+		}
 	}
 	//删除节点
 	node.Peers.Delete(conn.RemoteAddr().String())
-
-	wg.Done()
-}
-
-func (node *Node) closePeerCheck() {
-	node.PingTicker.Stop()
 }
 
 func (node *Node) disconnetAllPeers() {
@@ -272,14 +301,13 @@ func (node *Node) disconnetAllPeers() {
 		_ = key
 		peer := value.(Peer)
 		if err := peer.Conn.Close(); err != nil {
-			log.Error("err")
+			log.Error(err)
 		}
 		return true
 	})
 }
 
 func (node *Node) HandleVersion(peer *Peer, payload []byte) error {
-	//根据网络协议，收到version消息，就应该发送一个verack报文给对方
 	versionPayload := p2p.VersionPayload{}
 	versionPayload.Parse(payload)
 	peer.Version = versionPayload.Version
@@ -320,10 +348,14 @@ func (node *Node) removeTxsInBlock(blk *p2p.BlockPayload) []string {
 
 func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 	log.Infof("receive block data from [%s]", peer.Addr)
-	if node.isSyncBlock {
+	if !node.isSyncBlockDone() {
 		if len(node.syncingBlocks) < MaxSyncChanLen {
 			node.syncingBlocks <- true
 		}
+	}
+
+	if isStop() {
+		return nil
 	}
 
 	recvBlock := p2p.BlockPayload{}
@@ -358,7 +390,6 @@ func (node *Node) HandleBlock(peer *Peer, payload []byte) error {
 
 func (node *Node) SyncBlock(conn net.Conn) {
 	//发送getblocks消息给远程节点
-	node.isSyncBlock = true
 	node.syncingBlocks = make(chan bool, MaxSyncChanLen) //预留足够的空间，预留足够的检测时间
 	payload := p2p.GetblocksPayload{}
 	payload.Version = uint32(70002)                 //todo:各种version版本要灾难了，这里需要总结一下，不然乱了
@@ -375,21 +406,28 @@ func (node *Node) SyncBlock(conn net.Conn) {
 		panic(err)
 	}
 
-	go node.SyncBlockMonitor()
+	go node.SyncBlockMonitor(ctx)
 	log.Infof("sync block from [%s]...", conn.RemoteAddr().String())
 }
 
-func (node *Node) SyncBlockMonitor() {
-	t := time.NewTicker(3 * time.Second)
+func (node *Node) SyncBlockMonitor(ctx context.Context) {
+	t := time.NewTicker(SyncBlockCheckTimeval)//每隔一段时间查看一下区块同步状态
+deadloop:
 	for {
-		<-t.C
-		if len(node.syncingBlocks) == 0 {
-			t.Stop()
-			break
+		select {
+		case <-t.C:
+			if len(node.syncingBlocks) == 0 {
+				t.Stop()
+				node.syncBlocksDone <- true //区块同步完成
+				break deadloop
+			} else {
+				<-node.syncingBlocks//取出通道中的一个元素
+			}
+		case <- ctx.Done():
+			//取消同步区块
+			break deadloop
 		}
-		_ = <-node.syncingBlocks
 	}
-	node.syncBlocksDone <- true
 }
 
 func (node *Node) HandleGetblocks(peer *Peer, payload []byte) error {
@@ -544,8 +582,8 @@ func (node *Node) HandleInv(peer *Peer, payload []byte) error {
 
 //todo:这里需要好好想想，怎样才算是真正的同步成功了呢？
 func (node *Node) SyncMempool(wg *sync.WaitGroup) {
+	defer wg.Done()
 	//发送mempool消息，接收inv消息
-
 	count := 0
 	node.Peers.Range(func(key, value interface{}) bool {
 		addr := key.(string)
@@ -566,7 +604,6 @@ func (node *Node) SyncMempool(wg *sync.WaitGroup) {
 		}
 		return true
 	})
-	wg.Done()
 }
 
 func (node *Node) HandlePing(peer *Peer, payload []byte) error {

@@ -3,11 +3,13 @@ package storage
 import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"reflect"
+	"sync"
 )
 
 var (
@@ -16,10 +18,7 @@ var (
 )
 
 type blockMgr struct {
-	stop           chan bool
-	done           chan bool
 	newBlock       chan p2p.BlockPayload
-	storeBlockDone chan bool
 	DBhash2block   *leveldb.DB
 	DBhash2height  *leveldb.DB
 	DBheight2hash  *leveldb.DB
@@ -28,23 +27,13 @@ type blockMgr struct {
 
 var defaultBlockMgr *blockMgr
 
-func startBlockMgr(cfg *common.Config) {
+func startBlockMgr(cfg *common.Config, ctx context.Context, wg *sync.WaitGroup) {
 	defaultBlockMgr = newBlockMgr(cfg)
-	go defaultBlockMgr.manageBlockDB()
-}
-
-func stopBlockMgr() {
-	defaultBlockMgr.stop <- true
-
-	<-defaultBlockMgr.done
-	close(defaultBlockMgr.done)
+	go defaultBlockMgr.manageBlockDB(ctx, wg)
 }
 
 func newBlockMgr(cfg *common.Config) *blockMgr {
 	s := blockMgr{}
-	s.stop = make(chan bool, 1)
-	s.done = make(chan bool, 1)
-	s.storeBlockDone = make(chan bool, 1)
 	s.newBlock = make(chan p2p.BlockPayload, 500) //todo:仔细考量一下这个数字该如何定
 
 	var err error
@@ -71,12 +60,12 @@ func newBlockMgr(cfg *common.Config) *blockMgr {
 	return &s
 }
 
-func (bm *blockMgr) manageBlockDB() {
+func (bm *blockMgr) manageBlockDB(ctx context.Context,wg *sync.WaitGroup) {
 	nb := p2p.BlockPayload{}
 deadloop:
 	for {
 		select {
-		case <-bm.stop:
+		case <-ctx.Done():
 			break deadloop
 
 		case nb = <-bm.newBlock:
@@ -90,9 +79,6 @@ deadloop:
 				log.Error(err)
 				break deadloop
 			}
-			if len(bm.storeBlockDone) == 0 {
-				bm.storeBlockDone <- true
-			}
 			log.Info("update a block done.")
 		}
 	}
@@ -101,10 +87,8 @@ deadloop:
 	_ = bm.DBhash2height.Close()
 	_ = bm.DBlatestblock.Close()
 	close(bm.newBlock)
-	close(bm.stop)
-	close(bm.storeBlockDone)
-	log.Debug("exit db mamager...")
-	bm.done <- true
+	log.Info("exit db mamager...")
+	wg.Done()
 }
 
 //把新区块写入leveldb

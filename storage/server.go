@@ -3,22 +3,25 @@ package storage
 import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
+	"context"
 	"encoding/binary"
 	"encoding/hex"
 	"github.com/pkg/errors"
+	"sync"
 )
 
 var (
 	ErrBlockNotFound          = errors.New("block not found")
 	ErrBlockUnserializeFailed = errors.New("block unserialize failed")
-	ErrTxNotFound             = errors.New("tx not found")
-	ErrUtxoNotFound           = errors.New("UTXO not found")
-	stop                      = false
+	//ErrTxNotFound             = errors.New("tx not found")
+	//ErrUtxoNotFound           = errors.New("UTXO not found")
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 )
 
 func Store(newBlock *p2p.BlockPayload) {
-	//防止向已经关闭的newBlock通道写入数据
-	if !stop {
+	if !isStop() { //修复在newBlock通道关闭的情况下继续往通道里写数据的bug
 		defaultBlockMgr.newBlock <- *newBlock
 	}
 }
@@ -28,16 +31,21 @@ func StoreSync(newBlock *p2p.BlockPayload) error {
 }
 
 func Start(cfg *common.Config) {
-	startBlockMgr(cfg)
-	startTxMgr(cfg)
-	startUtxoMgr(cfg)
+	ctx, cancel = context.WithCancel(context.Background())
+
+	wg.Add(1)
+	startBlockMgr(cfg, ctx, &wg)
+
+	wg.Add(1)
+	startTxMgr(cfg, ctx, &wg)
+
+	wg.Add(1)
+	startUtxoMgr(cfg, ctx, &wg)
 }
 
 func Stop() {
-	stop = true
-	stopBlockMgr()
-	stopTxMgr()
-	stopUtxoMgr()
+	cancel()
+	wg.Wait()
 }
 
 func BlockFromHash(hash [32]byte) (*p2p.BlockPayload, error) {
@@ -96,22 +104,12 @@ func LatestBlockHash() [32]byte {
 	return hash
 }
 
-// todo:根据区块高度找出区块数据
-func BlockFromHeight(hash [32]byte) (*p2p.BlockPayload, error) {
-	return nil, ErrBlockNotFound
+func isStop() bool {
+	select {
+	case <- ctx.Done():
+		return true
+	default:
+		return false
+	}
 }
 
-// todo:根据交易交易id找出交易数据
-func Tx(txid [32]byte) (*p2p.TxPayload, error) {
-	return nil, ErrTxNotFound
-}
-
-// 根据PreOut组成的key找出交易输出数据
-//func Utxo(key [36]byte) (*p2p.TxOutput, error) {
-//	txout,err := utxo(key)
-//	if err != nil {
-//		log.Error(err)
-//		return nil,ErrUtxoNotFound
-//	}
-//	return txout, nil
-//}

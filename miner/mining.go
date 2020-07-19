@@ -21,8 +21,7 @@ var (
 	ErrNonceNotFound = errors.New("nonce not found")
 )
 
-func mineMonitor() {
-	wg := sync.WaitGroup{}
+func mineMonitor(wg *sync.WaitGroup) {
 deadloop:
 	for {
 		cmd := <-common.MinerCmd
@@ -41,14 +40,13 @@ deadloop:
 			}
 			minerConfig.state = StateAuto
 			wg.Add(1)
-			go autoMine(&wg)
+			go autoMine(wg)
 		case common.StopMine:
 			minerConfig.state = StateStop
 			break deadloop
 		}
 	}
-	wg.Wait()
-	minerStop <- true
+	wg.Done()
 }
 
 func autoMine(wg *sync.WaitGroup) {

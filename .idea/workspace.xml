@@ -2,27 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="acd2e73f-ae8e-4cca-9821-4865ebda1e22" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/cmd/log.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/miner/log.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node/log.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/p2p/log.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/storage/log.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/root.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/root.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/log.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/log.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/cmd/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/server.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/type.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/type.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.json" beforeDir="false" afterPath="$PROJECT_DIR$/config.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/miner/mining.go" beforeDir="false" afterPath="$PROJECT_DIR$/miner/mining.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/miner/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/miner/server.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node/api.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/api.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/node.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node/peer.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/peer.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/inv.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/inv.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/p2p/ver.go" beforeDir="false" afterPath="$PROJECT_DIR$/p2p/ver.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/storage/mamager.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node/route.go" beforeDir="false" afterPath="$PROJECT_DIR$/node/route.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/block.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/server.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/tx.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/tx.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/utxo.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/utxo.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -36,31 +27,10 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/miner/mining.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="330">
-              <caret line="165" column="30" selection-start-line="165" selection-start-column="13" selection-end-line="165" selection-end-column="30" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/node/node.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="4885">
-              <caret line="604" column="1" selection-start-line="604" selection-start-column="1" selection-end-line="604" selection-end-column="1" />
-              <folding>
-                <element signature="e#14#236#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/cmd/log.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="417">
-              <caret line="80" selection-start-line="80" selection-end-line="80" />
+            <state relative-caret-position="418">
+              <caret line="49" column="16" selection-start-line="49" selection-start-column="10" selection-end-line="49" selection-end-column="16" />
               <folding>
                 <element signature="e#13#200#0" expanded="true" />
               </folding>
@@ -69,19 +39,70 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/node/peer.go">
+        <entry file="file://$PROJECT_DIR$/miner/log.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="272">
-              <caret line="81" column="9" selection-start-line="81" selection-start-column="9" selection-end-line="81" selection-end-column="9" />
+            <state relative-caret-position="220">
+              <caret line="12" column="5" selection-start-line="12" selection-start-column="5" selection-end-line="12" selection-end-column="5" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://C:/Go/src/sync/map.go">
+        <entry file="file://$PROJECT_DIR$/node/node.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="706">
-              <caret line="305" column="21" selection-start-line="305" selection-start-column="21" selection-end-line="305" selection-end-column="21" />
+            <state relative-caret-position="-792">
+              <caret line="66" column="1" lean-forward="true" selection-start-line="66" selection-start-column="1" selection-end-line="66" selection-end-column="1" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://C:/Go/src/net/net.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="150">
+              <caret line="380" column="5" selection-start-line="380" selection-start-column="5" selection-end-line="380" selection-end-column="5" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/cmd/server.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1012">
+              <caret line="82" lean-forward="true" selection-start-line="82" selection-end-line="82" />
+              <folding>
+                <element signature="e#587#881#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/node/route.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="228">
+              <caret line="22" column="22" selection-start-line="22" selection-start-column="22" selection-end-line="22" selection-end-column="22" />
+              <folding>
+                <element signature="e#14#44#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://C:/Go/src/net/http/server.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-1064">
+              <caret line="2489" column="5" selection-start-line="2489" selection-start-column="5" selection-end-line="2489" selection-end-column="5" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/node/peer.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="22">
+              <caret line="25" column="18" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
             </state>
           </provider>
         </entry>
@@ -89,38 +110,19 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://C:/Go/src/io/io.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="186">
-              <caret line="327" column="5" selection-start-line="327" selection-start-column="5" selection-end-line="327" selection-end-column="5" />
+            <state relative-caret-position="319">
+              <caret line="77" column="4" selection-start-line="77" selection-start-column="4" selection-end-line="77" selection-end-column="4" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/node/api.go">
+        <entry file="file://$PROJECT_DIR$/common/type.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="310">
-              <caret line="27" column="14" selection-start-line="27" selection-start-column="14" selection-end-line="27" selection-end-column="14" />
+            <state relative-caret-position="110">
+              <caret line="5" column="4" selection-start-line="5" selection-start-column="4" selection-end-line="5" selection-end-column="4" />
             </state>
           </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/transaction/opcode.go">
-          <provider selected="true" editor-type-id="text-editor" />
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/config.json">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="152">
-              <caret line="14" column="38" selection-start-line="14" selection-start-column="38" selection-end-line="14" selection-end-column="38" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/transaction/script.go">
-          <provider selected="true" editor-type-id="text-editor" />
         </entry>
       </file>
     </leaf>
@@ -140,7 +142,6 @@
       <find>StartApiService</find>
       <find>Sync</find>
       <find>LatestBlockKey</find>
-      <find>HandShakeDone</find>
       <find>newBlock</find>
       <find>Store</find>
       <find>tx serialized</find>
@@ -154,6 +155,16 @@
       <find>CurrHeight</find>
       <find>txPool</find>
       <find>disconnetAllPeers</find>
+      <find>stop</find>
+      <find>storeBlockDone</find>
+      <find>exit</find>
+      <find>SyncBlockDone</find>
+      <find>HandShakeDone</find>
+      <find>StopPing</find>
+      <find>handle</find>
+      <find>syncBlocksDone</find>
+      <find>isSyncBlock</find>
+      <find>use of closed network connection</find>
     </findStrings>
   </component>
   <component name="GOROOT" path="C:\Go" />
@@ -163,8 +174,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/block/server.go" />
-        <option value="$PROJECT_DIR$/storage/tx.go" />
         <option value="$PROJECT_DIR$/p2p/tx_test.go" />
         <option value="$PROJECT_DIR$/p2p/node.go" />
         <option value="$PROJECT_DIR$/p2p/peer.go" />
@@ -186,19 +195,15 @@
         <option value="$PROJECT_DIR$/p2p/block.go" />
         <option value="$PROJECT_DIR$/p2p/tx.go" />
         <option value="$PROJECT_DIR$/miner/mining_test.go" />
-        <option value="$PROJECT_DIR$/storage/utxo.go" />
         <option value="$PROJECT_DIR$/cmd/mine.go" />
-        <option value="$PROJECT_DIR$/node/route.go" />
         <option value="$PROJECT_DIR$/common/constValue.go" />
         <option value="$PROJECT_DIR$/common/invVect.go" />
         <option value="$PROJECT_DIR$/storage/block_test.go" />
         <option value="$PROJECT_DIR$/miner/config.go" />
-        <option value="$PROJECT_DIR$/storage/block.go" />
         <option value="$PROJECT_DIR$/block/bits.go" />
         <option value="$PROJECT_DIR$/go.mod" />
         <option value="$PROJECT_DIR$/common/type.go" />
         <option value="$PROJECT_DIR$/common/config.go" />
-        <option value="$PROJECT_DIR$/miner/mining.go" />
         <option value="$PROJECT_DIR$/miner/log.go" />
         <option value="$PROJECT_DIR$/p2p/log.go" />
         <option value="$PROJECT_DIR$/storage/log.go" />
@@ -207,13 +212,19 @@
         <option value="$PROJECT_DIR$/p2p/inv.go" />
         <option value="$PROJECT_DIR$/cmd/root.go" />
         <option value="$PROJECT_DIR$/storage/mamager.go" />
-        <option value="$PROJECT_DIR$/miner/server.go" />
-        <option value="$PROJECT_DIR$/cmd/server.go" />
         <option value="$PROJECT_DIR$/node/api.go" />
-        <option value="$PROJECT_DIR$/node/node.go" />
-        <option value="$PROJECT_DIR$/node/peer.go" />
         <option value="$PROJECT_DIR$/config.json" />
         <option value="$PROJECT_DIR$/cmd/log.go" />
+        <option value="$PROJECT_DIR$/storage/block.go" />
+        <option value="$PROJECT_DIR$/storage/tx.go" />
+        <option value="$PROJECT_DIR$/storage/utxo.go" />
+        <option value="$PROJECT_DIR$/storage/server.go" />
+        <option value="$PROJECT_DIR$/miner/mining.go" />
+        <option value="$PROJECT_DIR$/miner/server.go" />
+        <option value="$PROJECT_DIR$/node/peer.go" />
+        <option value="$PROJECT_DIR$/node/route.go" />
+        <option value="$PROJECT_DIR$/node/node.go" />
+        <option value="$PROJECT_DIR$/cmd/server.go" />
       </list>
     </option>
   </component>
@@ -231,7 +242,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -242,27 +252,18 @@
             <path>
               <item name="btcnetwork" type="b2602c69:ProjectViewProjectNode" />
               <item name="btcnetwork" type="462c0819:PsiDirectoryNode" />
-              <item name="miner" type="462c0819:PsiDirectoryNode" />
+              <item name="cmd" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="btcnetwork" type="b2602c69:ProjectViewProjectNode" />
               <item name="btcnetwork" type="462c0819:PsiDirectoryNode" />
-              <item name="p2p" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="btcnetwork" type="b2602c69:ProjectViewProjectNode" />
-              <item name="btcnetwork" type="462c0819:PsiDirectoryNode" />
-              <item name="storage" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="btcnetwork" type="b2602c69:ProjectViewProjectNode" />
-              <item name="btcnetwork" type="462c0819:PsiDirectoryNode" />
-              <item name="transaction" type="462c0819:PsiDirectoryNode" />
+              <item name="node" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -410,14 +411,15 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1066" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.82857144" visible="true" weight="0.20663811" />
-      <window_info id="Structure" order="1" sideWeight="0.17142858" side_tool="true" visible="true" weight="0.20663811" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" sideWeight="0.7939394" visible="true" weight="0.22002141" />
+      <window_info id="Structure" order="1" sideWeight="0.2060606" side_tool="true" visible="true" weight="0.22002141" />
       <window_info id="Favorites" order="2" sideWeight="0.31088665" side_tool="true" weight="0.28961456" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.332211" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.27833894" />
+      <window_info anchor="bottom" id="Run" order="2" visible="true" weight="0.44444445" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.17508417" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.32996634" />
@@ -466,7 +468,8 @@
     <MESSAGE value="add broadcast new block function" />
     <MESSAGE value="fix block bits and target bug; mine one block done; add mine api; add getdata message handler" />
     <MESSAGE value="fix bug when broadcast block to peers the block is not in database;fix bug when stop mine waitgroup is negative; fix bug that when mined a block bug the tx is still in the mempool; add auto mine parameters; test auto mine and stop mine works fine" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix bug when broadcast block to peers the block is not in database;fix bug when stop mine waitgroup is negative; fix bug that when mined a block bug the tx is still in the mempool; add auto mine parameters; test auto mine and stop mine works fine" />
+    <MESSAGE value="change log package from logrus to btclog;refactor log system; use syncMap to protect datas in mempool; use io.ReadFull to refactor message read functions" />
+    <option name="LAST_COMMIT_MESSAGE" value="change log package from logrus to btclog;refactor log system; use syncMap to protect datas in mempool; use io.ReadFull to refactor message read functions" />
   </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
@@ -511,38 +514,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/block/bits_test.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="308">
-          <caret line="20" column="90" selection-start-line="20" selection-start-column="26" selection-end-line="20" selection-end-column="90" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Go/src/testing/testing.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="471">
-          <caret line="911" column="21" selection-start-line="911" selection-start-column="21" selection-end-line="911" selection-end-column="21" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/cmd/mine.go" />
-    <entry file="file://$PROJECT_DIR$/common/varint.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="88">
-          <caret line="7" column="5" selection-start-line="7" selection-start-column="5" selection-end-line="7" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/node/route.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="484">
-          <caret line="25" column="27" selection-start-line="25" selection-start-column="27" selection-end-line="25" selection-end-column="27" />
-          <folding>
-            <element signature="e#14#44#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/common/constValue.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="220">
@@ -598,13 +569,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/storage/block.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2244">
-          <caret line="110" column="20" selection-start-line="110" selection-start-column="20" selection-end-line="110" selection-end-column="20" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/block/bits.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="154">
@@ -647,13 +611,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/common/type.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret column="14" selection-start-column="14" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/common/config.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="308">
@@ -668,27 +625,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/miner/config.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="322">
-          <caret line="52" lean-forward="true" selection-start-line="52" selection-end-line="52" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/go/pkg/mod/github.com/btcsuite/btclog@v0.0.0-20170628155309-84c8d2346e9f/interface.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
           <caret line="9" column="5" selection-start-line="9" selection-start-column="5" selection-end-line="9" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/miner/log.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="15" lean-forward="true" selection-start-line="15" selection-end-line="15" />
-          <folding>
-            <element signature="e#15#75#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -701,23 +641,6 @@
           </folding>
         </state>
       </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/storage/log.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="176">
-          <caret line="8" column="25" lean-forward="true" selection-start-line="8" selection-start-column="25" selection-end-line="8" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/storage/utxo.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1290">
-          <caret line="137" selection-start-line="137" selection-end-line="137" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/storage/tx.go">
-      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/p2p/tx.go">
       <provider selected="true" editor-type-id="text-editor">
@@ -774,20 +697,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/go/pkg/mod/github.com/btcsuite/btclog@v0.0.0-20170628155309-84c8d2346e9f/log.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="155">
-          <caret line="379" selection-start-line="379" selection-end-line="379" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/miner/server.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="88">
-          <caret line="6" column="5" selection-start-line="6" selection-start-column="5" selection-end-line="6" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/log/btcminer.log">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="220">
@@ -795,90 +704,196 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/cmd/server.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1508">
-          <caret line="45" column="31" selection-start-line="45" selection-start-column="31" selection-end-line="45" selection-end-column="31" />
-          <folding>
-            <element signature="e#587#856#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/storage/server.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="396">
-          <caret line="24" selection-start-line="24" selection-end-line="24" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/transaction/coinbase.go">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/transaction/opcode.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/transaction/script.go">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
-    <entry file="file://$PROJECT_DIR$/node/api.go">
+    <entry file="file://$USER_HOME$/go/pkg/mod/github.com/btcsuite/btclog@v0.0.0-20170628155309-84c8d2346e9f/log.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="310">
-          <caret line="27" column="14" selection-start-line="27" selection-start-column="14" selection-end-line="27" selection-end-column="14" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://C:/Go/src/io/io.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="186">
-          <caret line="327" column="5" selection-start-line="327" selection-start-column="5" selection-end-line="327" selection-end-column="5" />
+        <state relative-caret-position="1078">
+          <caret line="60" column="14" selection-start-line="60" selection-start-column="14" selection-end-line="60" selection-end-column="14" />
         </state>
       </provider>
     </entry>
     <entry file="file://C:/Go/src/sync/map.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="706">
+        <state relative-caret-position="6644">
           <caret line="305" column="21" selection-start-line="305" selection-start-column="21" selection-end-line="305" selection-end-column="21" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/node/peer.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="272">
-          <caret line="81" column="9" selection-start-line="81" selection-start-column="9" selection-end-line="81" selection-end-column="9" />
-        </state>
-      </provider>
+    <entry file="file://$PROJECT_DIR$/transaction/opcode.go">
+      <provider selected="true" editor-type-id="text-editor" />
     </entry>
     <entry file="file://$PROJECT_DIR$/config.json">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="152">
+        <state relative-caret-position="308">
           <caret line="14" column="38" selection-start-line="14" selection-start-column="38" selection-end-line="14" selection-end-column="38" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/transaction/script.go">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/tx.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="308">
+          <caret line="14" selection-start-line="14" selection-end-line="14" />
+          <folding>
+            <element signature="e#17#59#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/log.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="176">
+          <caret line="8" column="1" selection-start-line="8" selection-start-column="1" selection-end-line="8" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/server.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="286">
+          <caret line="21" selection-start-line="21" selection-end-line="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/utxo_test.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="394">
+          <caret line="39" selection-start-line="39" selection-end-line="39" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Go/src/time/tick.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="968">
+          <caret line="44" column="17" selection-start-line="44" selection-start-column="17" selection-end-line="44" selection-end-column="17" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/utxo.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1584">
+          <caret line="80" column="21" selection-start-line="80" selection-start-column="21" selection-end-line="80" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/storage/block.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="308">
+          <caret line="24" column="30" selection-start-line="24" selection-start-column="30" selection-end-line="24" selection-end-column="30" />
+          <folding>
+            <element signature="n#!!block;n#hash2Height#0" />
+            <element signature="n#!!block;n#genesisBlockHash#0" />
+            <element signature="n#!!block;n#IsEmpty#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/miner/config.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1078">
+          <caret line="52" selection-start-line="52" selection-end-line="52" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/node/api.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="462">
+          <caret line="27" column="14" selection-start-line="27" selection-start-column="14" selection-end-line="27" selection-end-column="14" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/miner/mining.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="165" column="30" selection-start-line="165" selection-start-column="13" selection-end-line="165" selection-end-column="30" />
+        <state relative-caret-position="594">
+          <caret line="42" column="27" selection-start-line="42" selection-start-column="27" selection-end-line="42" selection-end-column="27" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/miner/server.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="374">
+          <caret line="20" column="13" selection-start-line="20" selection-start-column="13" selection-end-line="20" selection-end-column="13" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/common/type.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="110">
+          <caret line="5" column="4" selection-start-line="5" selection-start-column="4" selection-end-line="5" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Go/src/net/http/server.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-1064">
+          <caret line="2489" column="5" selection-start-line="2489" selection-start-column="5" selection-end-line="2489" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/node/peer.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="22">
+          <caret line="25" column="18" selection-start-line="25" selection-start-column="18" selection-end-line="25" selection-end-column="18" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Go/src/io/io.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="319">
+          <caret line="77" column="4" selection-start-line="77" selection-start-column="4" selection-end-line="77" selection-end-column="4" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/node/route.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="228">
+          <caret line="22" column="22" selection-start-line="22" selection-start-column="22" selection-end-line="22" selection-end-column="22" />
+          <folding>
+            <element signature="e#14#44#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/miner/log.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="220">
+          <caret line="12" column="5" selection-start-line="12" selection-start-column="5" selection-end-line="12" selection-end-column="5" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/cmd/log.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="417">
-          <caret line="80" selection-start-line="80" selection-end-line="80" />
+        <state relative-caret-position="418">
+          <caret line="49" column="16" selection-start-line="49" selection-start-column="10" selection-end-line="49" selection-end-column="16" />
           <folding>
             <element signature="e#13#200#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
+    <entry file="file://C:/Go/src/net/net.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="380" column="5" selection-start-line="380" selection-start-column="5" selection-end-line="380" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/node/node.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="4885">
-          <caret line="604" column="1" selection-start-line="604" selection-start-column="1" selection-end-line="604" selection-end-column="1" />
+        <state relative-caret-position="-792">
+          <caret line="66" column="1" lean-forward="true" selection-start-line="66" selection-start-column="1" selection-end-line="66" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cmd/server.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="1012">
+          <caret line="82" lean-forward="true" selection-start-line="82" selection-end-line="82" />
           <folding>
-            <element signature="e#14#236#0" expanded="true" />
+            <element signature="e#587#881#0" expanded="true" />
           </folding>
         </state>
       </provider>

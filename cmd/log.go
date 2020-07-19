@@ -32,7 +32,7 @@ var (
 	// backendLog is the logging backend used to create all subsystem loggers.
 	// The backend must not be used before the log rotator has been initialized,
 	// or data races and/or nil pointer dereferences will occur.
-	backendLog = btclog.NewBackend(logWriter{})
+	backendLog = btclog.NewBackend(logWriter{}, btclog.WithFlags(btclog.Lshortfile))//增加文件名和行号
 
 	// logRotator is one of the logging outputs.  It should be closed on
 	// application shutdown.

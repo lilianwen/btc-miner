@@ -1,12 +1,14 @@
 package node
 
 import (
+	"context"
 	"net/http"
 	"sync"
 )
 
-func (node *Node) StartApiService(wg *sync.WaitGroup) {
+func (node *Node) StartApiService(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	var handlers = map[string]func(*Node, http.ResponseWriter, *http.Request){
 		"/mempool":  (*Node).apiMempool,
 		"/latest":   (*Node).apiLatest,
@@ -15,10 +17,22 @@ func (node *Node) StartApiService(wg *sync.WaitGroup) {
 		"/stopmine": (*Node).apiStopMine,
 	}
 	node.apiHandlers = handlers
-	mux := http.NewServeMux()
-	mux.Handle("/", *node)
-	if err := http.ListenAndServe(node.Cfg.RpcListen, mux); err != nil {
-		panic(err)
+
+	srv := &http.Server{
+		Addr: node.Cfg.RpcListen,
+		Handler: node,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			// cannot panic, because this probably is an intentional close
+			log.Info("Httpserver: ListenAndServe() returns: ", err)
+		}
+	}()
+
+	<- ctx.Done()
+	if err := srv.Shutdown(nil); err != nil {
+		log.Error(err)
 	}
 }
 

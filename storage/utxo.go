@@ -3,9 +3,11 @@ package storage
 import (
 	"btcnetwork/common"
 	"btcnetwork/p2p"
+	"context"
 	"encoding/binary"
 	"github.com/syndtr/goleveldb/leveldb"
 	"reflect"
+	"sync"
 )
 
 const (
@@ -13,19 +15,14 @@ const (
 )
 
 type utxoMgr struct {
-	stop chan bool
-	done chan bool
-	tx   chan p2p.TxPayload
-
-	dbUtxo *leveldb.DB
+	tx      chan p2p.TxPayload
+	dbUtxo  *leveldb.DB
 }
 
 var defaultUtxoMgr *utxoMgr
 
 func newUtxoMgr(cfg *common.Config) *utxoMgr {
 	mgr := utxoMgr{}
-	mgr.stop = make(chan bool, 1)
-	mgr.done = make(chan bool, 1)
 	mgr.tx = make(chan p2p.TxPayload, UtxoTxChanSize)
 	var err error
 	mgr.dbUtxo, err = leveldb.OpenFile(cfg.DataDir+"/blockchain/utxo", nil)
@@ -37,11 +34,16 @@ func newUtxoMgr(cfg *common.Config) *utxoMgr {
 	return &mgr
 }
 
-func (um *utxoMgr) manageUtxo() {
+func startUtxoMgr(cfg *common.Config, ctx context.Context, wg *sync.WaitGroup) {
+	defaultUtxoMgr = newUtxoMgr(cfg)
+	go defaultUtxoMgr.manageUtxo(ctx, wg)
+}
+
+func (um *utxoMgr) manageUtxo(ctx context.Context, wg *sync.WaitGroup) {
 deadloop:
 	for {
 		select {
-		case <-um.stop:
+		case <- ctx.Done():
 			break deadloop
 		case tx := <-um.tx:
 			log.Info("new tx to update uxto")
@@ -77,23 +79,13 @@ deadloop:
 		}
 	}
 	um.dbUtxo.Close()
-	close(um.stop)
 	close(um.tx)
 	log.Info("exit utxo manager...")
-	um.done <- true
+	wg.Done()
 }
 
-func startUtxoMgr(cfg *common.Config) {
-	defaultUtxoMgr = newUtxoMgr(cfg)
-	go defaultUtxoMgr.manageUtxo()
-}
 
-func stopUtxoMgr() {
-	defaultUtxoMgr.stop <- true
 
-	<-defaultUtxoMgr.done
-	close(defaultUtxoMgr.done)
-}
 
 func utxo(key [36]byte) (*p2p.TxOutput, error) {
 	var buf []byte

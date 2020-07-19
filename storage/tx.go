@@ -1,13 +1,14 @@
 package storage
 
-import "btcnetwork/common"
+import (
+	"btcnetwork/common"
+	"context"
+	"sync"
+)
 
-// todo:暂时用不上就不实现了
-func startTxMgr(cfg *common.Config) {
-
-}
-
-// todo:暂时用不上就不实现了
-func stopTxMgr() {
-
+//暂时用不上就不实现了
+func startTxMgr(cfg *common.Config, ctx context.Context, wg *sync.WaitGroup) {
+	_ = cfg
+	_ = ctx
+	wg.Done()
 }

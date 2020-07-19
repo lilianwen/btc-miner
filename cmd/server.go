@@ -33,6 +33,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	_ "net/http/pprof"
 )
 
 var (

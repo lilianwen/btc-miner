@@ -2,6 +2,7 @@ package node
 
 import (
 	"btcnetwork/p2p"
+	"context"
 	"net"
 	"sync"
 	"time"
@@ -13,18 +14,17 @@ type Peer struct {
 	Addr          string    //形式如ip:port
 	Alive         chan bool //用于查询节点是否在线
 	HandShakeDone chan bool
-	SyncBlockDone chan bool
 }
 
 func NewPeer() Peer {
 	p := Peer{}
 	p.Alive = make(chan bool, 1)
 	p.HandShakeDone = make(chan bool, 1)
-	p.SyncBlockDone = make(chan bool, 1)
 	return p
 }
 
-func (node *Node) PingPeers(wg *sync.WaitGroup) {
+func (node *Node) PingPeers(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 deadloop:
 	for {
 		select {
@@ -48,12 +48,11 @@ deadloop:
 			timerCheckAlive := time.NewTimer(time.Duration(node.Cfg.CheckPongTimeval) * time.Second)
 			go node.CheckPeerAlive(timerCheckAlive)
 
-		case <-node.StopPing:
+		case <-ctx.Done():
+			node.PingTicker.Stop()
 			break deadloop
 		}
 	}
-
-	wg.Done()
 }
 
 func (node *Node) CheckPeerAlive(t *time.Timer) {
